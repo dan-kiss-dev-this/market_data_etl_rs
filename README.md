@@ -1,4 +1,4 @@
-# FastAPI + React starter
+# Market Data ETL and RS with FastAPI + React starter
 
 ## Running it
 

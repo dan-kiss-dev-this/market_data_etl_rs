@@ -36,7 +36,7 @@ A day only gets ratings once SPY has at least 253 bars before it, and a ticker o
 
 ## Load: where it goes, and what the tables look like
 
-Everything goes into one SQLite file, `backend/data/market.db`, in WAL mode so the API can read while the ETL writes ([db.py](../backend/app/db.py)). The `MARKET_DB` environment variable can point it somewhere else.
+Everything goes into a Postgres database ([db.py](../backend/app/db.py)). By default that's the `market` database in Postgres.app on this Mac (`postgresql://postgres@localhost:5432/market`); set `DATABASE_URL` to point somewhere else, such as Supabase. Postgres lets the API read while the ETL writes. The data started out in a SQLite file, `backend/data/market.db`, which `app.migrate_sqlite` copied over (see [ADR 0001](../docs/adr/0001-postgres.md)).
 
 | Table | Key | Columns | How it's written |
 |---|---|---|---|

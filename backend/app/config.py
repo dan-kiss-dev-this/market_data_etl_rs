@@ -6,8 +6,10 @@ from dotenv import load_dotenv
 BACKEND_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BACKEND_DIR / ".env")
 
-# MARKET_DB overrides the location, e.g. for a throwaway test database
-DB_PATH = Path(os.environ.get("MARKET_DB", BACKEND_DIR / "data" / "market.db"))
+# Local Postgres.app by default; point it at another database (e.g. Supabase) to switch
+DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://postgres@localhost:5432/market")
+# The old SQLite file, read only by app.migrate_sqlite
+SQLITE_PATH = BACKEND_DIR / "data" / "market.db"
 
 # Massive is the rebranded Polygon.io; api.polygon.io is the legacy host
 MASSIVE_BASE_URL = "https://api.massive.com"

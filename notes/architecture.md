@@ -2,7 +2,7 @@
 
 ## Backend
 
-The ETL (`app/etl.py`) fills SQLite from two external sources. FastAPI (`app/main.py`) only reads from SQLite and never calls Massive.
+The ETL (`app/etl.py`) fills Postgres from two external sources. FastAPI (`app/main.py`) only reads from Postgres and never calls Massive.
 
 ```mermaid
 flowchart LR
@@ -23,13 +23,13 @@ flowchart LR
     end
 
     subgraph lib["Shared modules"]
-        CFG["config.py<br/>loads .env, DB_PATH / MARKET_DB,<br/>MASSIVE_BASE_URL, BENCHMARK = SPY"]
+        CFG["config.py<br/>loads .env, DATABASE_URL,<br/>MASSIVE_BASE_URL, BENCHMARK = SPY"]
         MC["massive.py: MassiveClient<br/>grouped_daily, ticker_daily,<br/>ticker_events, splits<br/>12.5 s spacing, 429 backoff"]
         RS["rs.py: pure functions<br/>weighted_performance, rs_score,<br/>percentile_ratings, rs_line, is_new_high"]
-        DB["db.py: connect<br/>WAL mode + CREATE TABLE IF NOT EXISTS"]
+        DB["db.py: connect, pool, init_schema<br/>psycopg 3 + CREATE TABLE IF NOT EXISTS"]
     end
 
-    subgraph sqlite["SQLite: backend/data/market.db"]
+    subgraph pg["Postgres: DATABASE_URL (local Postgres.app by default)"]
         T1[("companies")]
         T2[("daily_bars")]
         T3[("fetched_dates")]
@@ -65,8 +65,8 @@ flowchart LR
     E5 -->|"replace"| T6
 
     etl -.->|"connect()"| DB
-    api -.->|"connect()"| DB
-    api -->|"read only"| sqlite
+    api -.->|"pool()"| DB
+    api -->|"read only"| pg
     TEST --> RS
 ```
 

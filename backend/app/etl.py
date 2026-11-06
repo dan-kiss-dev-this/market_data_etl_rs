@@ -1,4 +1,4 @@
-"""Extract S&P 500 prices from Massive, transform them into RS Ratings, load into SQLite.
+"""Extract S&P 500 prices from Massive, transform them into RS Ratings, load into Postgres.
 
 Run from backend/:  uv run python -m app.etl [--days N] [--rs-only]
 Resumable: each trading day is committed as soon as it's fetched.
@@ -7,31 +7,34 @@ Resumable: each trading day is committed as soon as it's fetched.
 import argparse
 import csv
 import io
-import sqlite3
 from datetime import date, timedelta
 
 import httpx
+import psycopg
 
 from app import rs
 from app.config import BENCHMARK, CONSTITUENTS_URL
-from app.db import connect
+from app.db import connect, init_schema
 from app.massive import MIN_SECONDS_BETWEEN_CALLS, MassiveClient, bar_date
 
 DEFAULT_DAYS = 725  # just inside the free tier's 2-year history limit
 # An empty result this recent may just mean Massive hasn't published the day yet
 RECENT_DAYS_GRACE = 3
+UPSERT_BAR = """INSERT INTO daily_bars VALUES (%s, %s, %s, %s)
+                ON CONFLICT (ticker, date) DO UPDATE SET close = EXCLUDED.close, volume = EXCLUDED.volume"""
+RS_COLUMNS = ("date", "ticker", "rs_score", "rs_rating", "ret_3m", "ret_12m", "rs_new_high")
 
 
-def load_companies(conn: sqlite3.Connection) -> set[str]:
+def load_companies(conn: psycopg.Connection) -> set[str]:
     resp = httpx.get(CONSTITUENTS_URL, timeout=30, follow_redirects=True)
     resp.raise_for_status()
     rows = [
         (r["Symbol"].strip(), r["Security"].strip(), r["GICS Sector"].strip())
         for r in csv.DictReader(io.StringIO(resp.text))
     ]
-    with conn:
+    with conn.transaction():
         conn.execute("DELETE FROM companies")
-        conn.executemany("INSERT INTO companies VALUES (?, ?, ?)", rows)
+        conn.cursor().executemany("INSERT INTO companies VALUES (%s, %s, %s)", rows)
     print(f"Constituents: {len(rows)} companies")
     return {r[0] for r in rows}
 
@@ -46,7 +49,7 @@ def weekdays(start: date, end: date) -> list[str]:
     return days
 
 
-def fetch_prices(conn: sqlite3.Connection, client: MassiveClient, tickers: set[str], days: int) -> None:
+def fetch_prices(conn: psycopg.Connection, client: MassiveClient, tickers: set[str], days: int) -> None:
     today = date.today()
     done = {r["date"] for r in conn.execute("SELECT date FROM fetched_dates")}
     todo = [d for d in weekdays(today - timedelta(days=days), today - timedelta(days=1)) if d not in done]
@@ -68,17 +71,18 @@ def fetch_prices(conn: sqlite3.Connection, client: MassiveClient, tickers: set[s
         if not rows and (today - date.fromisoformat(day)).days <= RECENT_DAYS_GRACE:
             print(f"  [{n}/{len(todo)}] {day}: no data yet, will retry next run")
             continue
-        with conn:
-            conn.executemany("INSERT OR REPLACE INTO daily_bars VALUES (?, ?, ?, ?)", rows)
+        with conn.transaction():
+            conn.cursor().executemany(UPSERT_BAR, rows)
             conn.execute(
-                "INSERT OR REPLACE INTO fetched_dates VALUES (?, ?, ?)",
+                """INSERT INTO fetched_dates VALUES (%s, %s, %s)
+                   ON CONFLICT (date) DO UPDATE SET rows = EXCLUDED.rows, fetched_at = EXCLUDED.fetched_at""",
                 (day, len(rows), today.isoformat()),
             )
         label = f"{len(rows)} bars" if rows else "market closed"
         print(f"  [{n}/{len(todo)}] {day}: {label}")
 
 
-def history_window(conn: sqlite3.Connection) -> tuple[str, str] | None:
+def history_window(conn: psycopg.Connection) -> tuple[str, str] | None:
     first = conn.execute("SELECT MIN(date) FROM fetched_dates WHERE rows > 0").fetchone()[0]
     if not first:
         return None
@@ -105,7 +109,7 @@ def symbol_periods(
     return periods
 
 
-def refetch_history(conn: sqlite3.Connection, client: MassiveClient, ticker: str) -> str:
+def refetch_history(conn: psycopg.Connection, client: MassiveClient, ticker: str) -> str:
     """Replace a company's bars with its full history, stitched across any old symbols.
 
     Also drops bars that belonged to a different security that used the symbol earlier
@@ -115,7 +119,7 @@ def refetch_history(conn: sqlite3.Connection, client: MassiveClient, ticker: str
     if window is None:
         return "no data yet"
     lo, hi = window
-    first_bar = conn.execute("SELECT MIN(date) FROM daily_bars WHERE ticker = ?", (ticker,)).fetchone()[0]
+    first_bar = conn.execute("SELECT MIN(date) FROM daily_bars WHERE ticker = %s", (ticker,)).fetchone()[0]
     rows, used = [], []
     for symbol, start, end in symbol_periods(client, ticker, first_bar):
         a, b = max(start, lo), min(end or hi, hi)
@@ -124,15 +128,15 @@ def refetch_history(conn: sqlite3.Connection, client: MassiveClient, ticker: str
         bars = client.ticker_daily(symbol, a, b)
         rows += [(ticker, bar_date(bar), bar["c"], bar.get("v", 0)) for bar in bars]
         used.append(f"{symbol} {len(bars)}")
-    with conn:
-        conn.execute("DELETE FROM daily_bars WHERE ticker = ?", (ticker,))
-        conn.executemany("INSERT OR REPLACE INTO daily_bars VALUES (?, ?, ?, ?)", rows)
+    with conn.transaction():
+        conn.execute("DELETE FROM daily_bars WHERE ticker = %s", (ticker,))
+        conn.cursor().executemany(UPSERT_BAR, rows)
     return f"{len(rows)} bars ({', '.join(used) or 'none'})"
 
 
-def fix_renames(conn: sqlite3.Connection, client: MassiveClient, tickers: set[str]) -> None:
+def fix_renames(conn: psycopg.Connection, client: MassiveClient, tickers: set[str]) -> None:
     """Rebuild history for tickers that look renamed: short history or an impossible jump."""
-    spy_days = conn.execute("SELECT COUNT(*) FROM daily_bars WHERE ticker = ?", (BENCHMARK,)).fetchone()[0]
+    spy_days = conn.execute("SELECT COUNT(*) FROM daily_bars WHERE ticker = %s", (BENCHMARK,)).fetchone()[0]
     counts = {
         r["ticker"]: r["n"]
         for r in conn.execute("SELECT ticker, COUNT(*) AS n FROM daily_bars GROUP BY ticker")
@@ -153,14 +157,16 @@ def fix_renames(conn: sqlite3.Connection, client: MassiveClient, tickers: set[st
     )
     for ticker in candidates:
         print(f"  {ticker}: {refetch_history(conn, client, ticker)}")
-        with conn:
+        with conn.transaction():
             conn.execute(
-                "INSERT OR REPLACE INTO history_checked VALUES (?, ?)", (ticker, date.today().isoformat())
+                """INSERT INTO history_checked VALUES (%s, %s)
+                   ON CONFLICT (ticker) DO UPDATE SET checked_at = EXCLUDED.checked_at""",
+                (ticker, date.today().isoformat()),
             )
     print(f"Renames: checked {len(candidates)} tickers with short or broken history")
 
 
-def apply_splits(conn: sqlite3.Connection, client: MassiveClient, tickers: set[str]) -> None:
+def apply_splits(conn: psycopg.Connection, client: MassiveClient, tickers: set[str]) -> None:
     """Refetch a ticker's history when a split happened after some of its bars were fetched.
 
     Bars are split-adjusted as of the day they were fetched, so only bars fetched on or
@@ -179,21 +185,21 @@ def apply_splits(conn: sqlite3.Connection, client: MassiveClient, tickers: set[s
         ticker, executed = s["ticker"], s["execution_date"]
         stale = conn.execute(
             """SELECT 1 FROM daily_bars b JOIN fetched_dates f ON f.date = b.date
-               WHERE b.ticker = ? AND b.date < ? AND f.fetched_at <= ? LIMIT 1""",
+               WHERE b.ticker = %s AND b.date < %s AND f.fetched_at <= %s LIMIT 1""",
             (ticker, executed, executed),
         ).fetchone()
         if stale:
             result = refetch_history(conn, client, ticker)
             print(f"  split {ticker} {s['split_from']:g}:{s['split_to']:g} on {executed}: refetched {result}")
             refetched += 1
-        with conn:
-            conn.execute("INSERT INTO splits_applied VALUES (?, ?)", (ticker, executed))
+        with conn.transaction():
+            conn.execute("INSERT INTO splits_applied VALUES (%s, %s)", (ticker, executed))
     print(f"Splits: {len(splits)} new for S&P tickers, {refetched} refetched")
 
 
-def compute_rs(conn: sqlite3.Connection) -> None:
+def compute_rs(conn: psycopg.Connection) -> None:
     bench_rows = conn.execute(
-        "SELECT date, close FROM daily_bars WHERE ticker = ? ORDER BY date", (BENCHMARK,)
+        "SELECT date, close FROM daily_bars WHERE ticker = %s ORDER BY date", (BENCHMARK,)
     ).fetchall()
     dates = [r["date"] for r in bench_rows]
     benchmark = [r["close"] for r in bench_rows]
@@ -210,22 +216,21 @@ def compute_rs(conn: sqlite3.Connection) -> None:
             closes_by_ticker[r["ticker"]][i] = r["close"]
 
     rows = rs.compute_ratings(dates, benchmark, closes_by_ticker)
-    with conn:
+    with conn.transaction():
         conn.execute("DELETE FROM rs_ratings")
-        conn.executemany(
-            """INSERT INTO rs_ratings VALUES
-               (:date, :ticker, :rs_score, :rs_rating, :ret_3m, :ret_12m, :rs_new_high)""",
-            rows,
-        )
+        # COPY streams all rows in one go; much faster than row-by-row inserts
+        with conn.cursor().copy(f"COPY rs_ratings ({', '.join(RS_COLUMNS)}) FROM STDIN") as copy:
+            for row in rows:
+                copy.write_row([row[c] for c in RS_COLUMNS])
     rated_days = len({r["date"] for r in rows})
     print(f"RS: {len(rows)} ratings across {rated_days} days")
     if not rows:
         print(f"  (needs {rs.MIN_BARS} trading days of {BENCHMARK}; have {len(dates)})")
 
 
-def print_summary(conn: sqlite3.Connection) -> None:
+def print_summary(conn: psycopg.Connection) -> None:
     first, last, days = conn.execute(
-        "SELECT MIN(date), MAX(date), COUNT(*) FROM daily_bars WHERE ticker = ?", (BENCHMARK,)
+        "SELECT MIN(date), MAX(date), COUNT(*) FROM daily_bars WHERE ticker = %s", (BENCHMARK,)
     ).fetchone()
     tickers = conn.execute("SELECT COUNT(DISTINCT ticker) FROM daily_bars").fetchone()[0]
     rated = conn.execute("SELECT MAX(date) FROM rs_ratings").fetchone()[0]
@@ -239,6 +244,7 @@ def main() -> None:
     args = parser.parse_args()
 
     conn = connect()
+    init_schema(conn)
     if not args.rs_only:
         client = MassiveClient()
         tickers = load_companies(conn)

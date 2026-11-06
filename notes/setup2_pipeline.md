@@ -29,10 +29,10 @@ The free Massive tier allows 5 calls a minute, provides end-of-day data only, an
 ```
 backend/
   .env.example          # MASSIVE_API_KEY=   (real .env is already gitignored)
-  data/market.db        # SQLite, created by ETL; add backend/data/ to .gitignore
+  data/market.db        # original SQLite store; now migrated to Postgres (docs/adr/0001-postgres.md)
   app/
-    config.py           # loads .env (python-dotenv), DB path, API base URL
-    db.py               # sqlite3 connect + CREATE TABLE IF NOT EXISTS
+    config.py           # loads .env (python-dotenv), DATABASE_URL, API base URL
+    db.py               # psycopg connect/pool + CREATE TABLE IF NOT EXISTS
     massive.py          # tiny httpx client: grouped_daily(date), rate-limited
     etl.py              # extract → transform → load; `uv run python -m app.etl`
     rs.py               # pure functions: weighted perf, score, percentile, RS line
@@ -47,7 +47,7 @@ notes/setup2_pipeline.md  # copy of this plan, matching notes/setup1.md conventi
 
 ## Backend
 
-**Dependencies** (run from `backend/`): `uv add python-dotenv`. `httpx` already ships with `fastapi[standard]`, and storage uses stdlib `sqlite3`. No pandas, because the math is simple loops over ~500 tickers.
+**Dependencies** (run from `backend/`): `uv add python-dotenv`. `httpx` already ships with `fastapi[standard]`, and storage was originally stdlib `sqlite3` (now Postgres via `psycopg`, see ADR 0001). No pandas, because the math is simple loops over ~500 tickers.
 
 **Config / secrets:** `backend/.env` holds `MASSIVE_API_KEY=...`. Base URL is `https://api.massive.com` (kept as a constant; `api.polygon.io` is the legacy host). The key is sent as an `Authorization: Bearer` header so it never shows up in URLs or logs.
 
@@ -93,7 +93,7 @@ After the first backfill, a daily rerun costs one API call. Flags: `--days N`, `
 
 ## Verification
 - `uv run pytest` (from `backend/`): `tests/test_rs.py` checks that a stock that doubled while SPY was flat gets `rs_score` ≈ 200, that percentiles span 1–99 with ties handled consistently, that tickers with fewer than 253 bars get no rating, and that the RS-line new-high flag works.
-- After the ETL, `sqlite3 backend/data/market.db "select count(*) from daily_bars where ticker='SPY'"` should equal the trading-day count, and `select count(distinct ticker) from daily_bars` should be about 500.
+- After the ETL, `psql -U postgres -d market -c "select count(*) from daily_bars where ticker='SPY'"` should equal the trading-day count, and `select count(distinct ticker) from daily_bars` should be about 500.
 - `curl localhost:8000/api/rs/leaders?limit=5` and `curl localhost:8000/api/rs/NVDA` should return sensible JSON. Spot-check one RS rating against intuition (for example, recent big winners near 99).
 - Open `localhost:5173`, run the `run` skill or the Chrome tools to screenshot the table and chart, click a few rows, and switch the sector filter and the range toggle.
 - `cd frontend && npm run build && npm run lint` should pass.

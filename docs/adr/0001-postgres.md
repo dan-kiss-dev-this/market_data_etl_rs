@@ -11,7 +11,7 @@ Every table (companies, daily_bars, rs_ratings and the ETL bookkeeping tables) l
 - Talk to it with **psycopg 3** and plain SQL, not supabase-py. The queries are analytical (joins, window functions, bulk loads), and supabase-py goes through Supabase's REST API.
 - Keep dates as `TEXT` ISO strings so ordering and the API's JSON stay exactly as they were. Floats are `DOUBLE PRECISION`; `rs_new_high` is `BOOLEAN`.
 - Connections use `autocommit=True`, and writes are grouped with `conn.transaction()`. `prepare_threshold=None` keeps Supabase's transaction pooler working.
-- `app.migrate_sqlite` copied the existing data over once. `market.db` is kept as a backup.
+- A one-off script (`app.migrate_sqlite`) copied the existing data over. Both it and `market.db` were later removed; they remain in git history at commit `925b415`. Backups are now `pg_dump` files in `backend/data/backups/` (gitignored).
 
 ## Consequences
 - Local development needs a running Postgres (Postgres.app) with a `market` database.

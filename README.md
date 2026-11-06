@@ -22,7 +22,7 @@ Open http://localhost:5173. Vite forwards `/api` requests to the backend on port
 
 The ETL pulls daily S&P 500 prices from [Massive](https://massive.com) (formerly Polygon.io) and computes IBD-style RS Ratings into Postgres. See `notes/setup2_pipeline.md` for the method.
 
-0. Have Postgres running locally ([Postgres.app](https://postgresapp.com)) and create the database once: `createdb -U postgres market`. The app connects to `postgresql://postgres@localhost:5432/market` unless `DATABASE_URL` is set in `backend/.env`. To copy data from the old SQLite file: `uv run python -m app.migrate_sqlite` (from `backend/`). To browse the data, double-click `market` in Postgres.app or use a GUI like TablePlus.
+0. Have Postgres running locally ([Postgres.app](https://postgresapp.com)) and create the database once: `createdb -U postgres market`. The app connects to `postgresql://postgres@localhost:5432/market` unless `DATABASE_URL` is set in `backend/.env`. To browse the data, double-click `market` in Postgres.app or use a GUI like TablePlus.
 
 1. Get a free Massive API key and add it to `backend/.env` (template: `backend/.env.example`):
    ```

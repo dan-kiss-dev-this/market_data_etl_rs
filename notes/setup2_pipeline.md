@@ -29,7 +29,7 @@ The free Massive tier allows 5 calls a minute, provides end-of-day data only, an
 ```
 backend/
   .env.example          # MASSIVE_API_KEY=   (real .env is already gitignored)
-  data/market.db        # original SQLite store; now migrated to Postgres (docs/adr/0001-postgres.md)
+  data/backups/         # pg_dump backups (gitignored); the original SQLite store was removed (docs/adr/0001-postgres.md)
   app/
     config.py           # loads .env (python-dotenv), DATABASE_URL, API base URL
     db.py               # psycopg connect/pool + CREATE TABLE IF NOT EXISTS

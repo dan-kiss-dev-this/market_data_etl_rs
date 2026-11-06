@@ -8,8 +8,6 @@ load_dotenv(BACKEND_DIR / ".env")
 
 # Local Postgres.app by default; point it at another database (e.g. Supabase) to switch
 DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://postgres@localhost:5432/market")
-# The old SQLite file, read only by app.migrate_sqlite
-SQLITE_PATH = BACKEND_DIR / "data" / "market.db"
 
 # Massive is the rebranded Polygon.io; api.polygon.io is the legacy host
 MASSIVE_BASE_URL = "https://api.massive.com"

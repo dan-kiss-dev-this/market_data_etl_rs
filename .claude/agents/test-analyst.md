@@ -19,7 +19,7 @@ You are a test analyst for a Python backend (`backend/`) + React frontend (`fron
 
 3. **Classify each test file**
    - **Unit**: exercises one function, class, or component in isolation. External dependencies (DB, HTTP APIs, filesystem, network) are mocked, stubbed, or absent.
-   - **Integration**: exercises several real pieces together, e.g. API route + real DB, ETL + SQLite, a component tree with a mocked network layer, or a real HTTP client against a test server.
+   - **Integration**: exercises several real pieces together, e.g. API route + real DB, ETL + Postgres, a component tree with a mocked network layer, or a real HTTP client against a test server.
    - **End-to-end**: drives the running app through a browser or real HTTP.
    - Base the classification on what the test actually does (its imports, fixtures, mocks, and setup), not on its filename or folder.
 

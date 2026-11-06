@@ -49,7 +49,7 @@ CREATE INDEX IF NOT EXISTS idx_rs_ratings_ticker ON rs_ratings (ticker, date);
 
 
 class Row(tuple):
-    """A result row readable by position or column name, like sqlite3.Row."""
+    """A result row readable by position or column name, like a tuple or a dict."""
 
     def __new__(cls, names: list[str], values):
         row = super().__new__(cls, values)

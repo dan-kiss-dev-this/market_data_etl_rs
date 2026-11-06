@@ -5,3 +5,4 @@ dist/
 .env
 .DS_Store
 backend/data/backups/
+backend/data/*.log

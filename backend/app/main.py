@@ -1,8 +1,9 @@
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI, HTTPException
+from fastapi.staticfiles import StaticFiles
 
-from app.config import BENCHMARK
+from app.config import BACKEND_DIR, BENCHMARK
 from app.db import pool
 
 
@@ -88,3 +89,9 @@ def rs_ticker(ticker: str):
             (BENCHMARK, ticker),
         ).fetchall()
     return {**dict(company), "series": [dict(r) for r in series]}
+
+# The built React app (npm run build), served at / so the site and API share one origin.
+# Mounted last so the /api routes above win. Absent in local dev, where Vite serves it.
+FRONTEND_DIST = BACKEND_DIR.parent / "frontend" / "dist"
+if FRONTEND_DIST.is_dir():
+    app.mount("/", StaticFiles(directory=FRONTEND_DIST, html=True), name="frontend")

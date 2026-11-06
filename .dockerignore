@@ -1,0 +1,10 @@
+# Keep secrets, local data and build junk out of the image
+**/.env
+**/.venv
+**/node_modules
+**/__pycache__
+**/.DS_Store
+frontend/dist
+backend/data
+.git
+.scratch

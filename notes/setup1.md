@@ -1,13 +1,13 @@
 # FastAPI + React starter
 
 ## Context
-Set up a minimal full-stack project in the empty `/Users/danielkiss/Code/python_react_sample`. The backend is FastAPI and the frontend is React. When the two dev servers run, the React page fetches data from the API.
+Set up a minimal full-stack project in the empty `/Users/danielkiss/Code/market_data_etl_rs`. The backend is FastAPI and the frontend is React. When the two dev servers run, the React page fetches data from the API.
 
 Tools already installed: Python 3.11.2, Node 24.14, `uv`, and `npm`. Every step below can be copied and pasted by hand. Each command block starts from the project root.
 
 ## Layout
 ```
-python_react_sample/
+market_data_etl_rs/
 ├── backend/          # uv project → backend/.venv
 │   ├── pyproject.toml
 │   ├── uv.lock
@@ -37,7 +37,7 @@ Each side has its own manifest and lockfile. Both lockfiles are committed. `.ven
 
 ### 1. Repo root
 ```bash
-cd /Users/danielkiss/Code/python_react_sample
+cd /Users/danielkiss/Code/market_data_etl_rs
 git init
 ```
 Create `.gitignore`:

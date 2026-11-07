@@ -49,10 +49,15 @@ def weekdays(start: date, end: date) -> list[str]:
     return days
 
 
+def pending_days(today: date, days: int, done: set[str]) -> list[str]:
+    """Weekdays from `days` ago up to yesterday that haven't been fetched, oldest first."""
+    return [d for d in weekdays(today - timedelta(days=days), today - timedelta(days=1)) if d not in done]
+
+
 def fetch_prices(conn: psycopg.Connection, client: MassiveClient, tickers: set[str], days: int) -> None:
     today = date.today()
     done = {r["date"] for r in conn.execute("SELECT date FROM fetched_dates")}
-    todo = [d for d in weekdays(today - timedelta(days=days), today - timedelta(days=1)) if d not in done]
+    todo = pending_days(today, days, done)
     if not todo:
         print("Prices: up to date")
         return

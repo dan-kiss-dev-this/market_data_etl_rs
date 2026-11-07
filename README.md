@@ -35,7 +35,7 @@ The ETL pulls daily S&P 500 prices from [Massive](https://massive.com) (formerly
    uv run python -m app.etl --rs-only  # recompute ratings without calling the API
    ```
    The free tier allows 5 calls a minute, and each trading day takes one call. Every day is saved as soon as it arrives, so you can stop the run at any point and rerunning resumes it. Rerun it after the market closes to add the new day.
-3. Run the tests from `backend/` with `uv run pytest`.
+3. Run the tests from `backend/` with `uv run pytest`. They also run in CI on every push and pull request (`.github/workflows/test.yml`); they need no secrets or database.
 
 ## Adding dependencies
 

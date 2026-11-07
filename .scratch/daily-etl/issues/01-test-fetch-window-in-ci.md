@@ -8,11 +8,11 @@ See the spec: `.scratch/daily-etl/spec.md` (Testing Decisions).
 
 **Status:** ready-for-agent
 
-- [ ] The price-fetch step uses the new function, and a local ETL run behaves as before (it reports "Prices: up to date" or fetches only the missing days)
-- [ ] Test: a run on Saturday 2026-11-07 ends at Friday 2026-11-06
-- [ ] Test: a run on Tuesday 2026-11-10 ends at Monday 2026-11-09 and excludes the weekend
-- [ ] Test: already-fetched dates are skipped, and a fully fetched window returns nothing
-- [ ] Test: the window start respects the days parameter
-- [ ] `uv run pytest` passes locally (existing RS tests and the new tests)
+- [x] The price-fetch step uses the new function, and a local ETL run behaves as before (it reports "Prices: up to date" or fetches only the missing days)
+- [x] Test: a run on Saturday 2026-11-07 ends at Friday 2026-11-06
+- [x] Test: a run on Tuesday 2026-11-10 ends at Monday 2026-11-09 and excludes the weekend
+- [x] Test: already-fetched dates are skipped, and a fully fetched window returns nothing
+- [x] Test: the window start respects the days parameter
+- [x] `uv run pytest` passes locally (existing RS tests and the new tests)
 - [ ] The CI workflow runs on push and pull request, uses the frozen lockfile with dev dependencies, and goes green on GitHub
-- [ ] The README's tests note says the tests also run in CI
+- [x] The README's tests note says the tests also run in CI

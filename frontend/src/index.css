@@ -258,9 +258,18 @@ select,
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+.pct-whole {
+  display: none;
+}
 @media (max-width: 480px) {
   .name {
     max-width: 10ch;
+  }
+  .pct-full {
+    display: none;
+  }
+  .pct-whole {
+    display: inline;
   }
 }
 .new-high {

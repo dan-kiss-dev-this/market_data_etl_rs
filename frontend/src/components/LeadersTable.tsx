@@ -9,6 +9,23 @@ type Props = {
 
 const pct = (v: number) => `${v >= 0 ? '+' : ''}${(v * 100).toFixed(1)}%`
 
+// Round from the one-decimal value shown on desktop, half away from zero, so +22.5% reads +23%
+function pctWhole(v: number) {
+  const tenth = Number((v * 100).toFixed(1))
+  const whole = Math.sign(tenth) * Math.round(Math.abs(tenth))
+  return `${whole >= 0 ? '+' : ''}${whole}%`
+}
+
+// Only one span is displayed at a time (see .pct-full / .pct-whole in index.css)
+function Pct({ value }: { value: number }) {
+  return (
+    <>
+      <span className="pct-full">{pct(value)}</span>
+      <span className="pct-whole">{pctWhole(value)}</span>
+    </>
+  )
+}
+
 function Change({ value }: { value: number | null }) {
   if (value === null) return <span className="muted">–</span>
   if (value === 0) return <span className="muted">0</span>
@@ -72,8 +89,8 @@ export default function LeadersTable({ leaders, selected, onSelect, loading }: P
                 </div>
               </td>
               <td className="num"><Change value={l.rating_change_1w} /></td>
-              <td className="num">{pct(l.ret_3m)}</td>
-              <td className="num">{pct(l.ret_12m)}</td>
+              <td className="num"><Pct value={l.ret_3m} /></td>
+              <td className="num"><Pct value={l.ret_12m} /></td>
               <td className="num">{l.close.toFixed(2)}</td>
             </tr>
           ))}

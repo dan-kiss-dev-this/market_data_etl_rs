@@ -96,7 +96,11 @@ function Panel({ title, subtitle, rows, dataKey, format, height, showXAxis, doma
       </figcaption>
       {/* Same height as the chart, so the card doesn't jump when the data lands */}
       {loading ? (
-        <div className="panel-skeleton" style={{ height }} aria-hidden="true" />
+        <div className="panel-skeleton" style={{ height }} aria-hidden="true">
+          <svg className="skeleton-bolt" viewBox="0 0 24 36" width={28} height={42}>
+            <path d="M13 2 4 20h7l-1 14 9-18h-7z" />
+          </svg>
+        </div>
       ) : (
         <div
           onMouseMove={(e) => setMouseY(e.clientY - e.currentTarget.getBoundingClientRect().top)}

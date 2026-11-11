@@ -13,6 +13,7 @@
   --selected-bg: rgba(42, 120, 214, 0.08);
   --delta-up: #006300;
   --delta-down: #d03b3b;
+  --bolt: #b8860b;
   /* Same fill in both themes: white text keeps 4.6:1 contrast on it */
   --accent: #2a78d6;
   --accent-hover: #2266b8;
@@ -43,6 +44,7 @@
     --selected-bg: rgba(57, 135, 229, 0.16);
     --delta-up: #0ca30c;
     --delta-down: #e66767;
+  --bolt: #c9a227;
   }
 }
 
@@ -61,6 +63,7 @@
   --selected-bg: rgba(57, 135, 229, 0.16);
   --delta-up: #0ca30c;
   --delta-down: #e66767;
+  --bolt: #c9a227;
 }
 
 body {
@@ -371,6 +374,15 @@ select,
   border-radius: 6px;
   background: linear-gradient(90deg, var(--grid) 25%, var(--surface) 50%, var(--grid) 75%) 0 0 / 200% 100%;
   animation: shimmer 1.2s linear infinite;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.skeleton-bolt {
+  fill: none;
+  stroke: var(--bolt);
+  stroke-width: 1.5;
+  stroke-linejoin: round;
 }
 @keyframes shimmer {
   to {

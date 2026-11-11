@@ -102,3 +102,14 @@ test('while loading, each panel shows a skeleton of its chart height instead of 
   expect(container.querySelector('.panel-skeleton')).toBeNull()
   expect(container.querySelectorAll('.recharts-wrapper')).toHaveLength(3)
 })
+
+test('each loading skeleton shows a lightning bolt, taller than it is wide', () => {
+  const { container } = render(<RsChart detail={detail} range="3M" benchmark="SPY" loading />)
+  const bolts = [...container.querySelectorAll('.panel-skeleton > svg.skeleton-bolt')]
+
+  expect(bolts).toHaveLength(3)
+  for (const bolt of bolts) {
+    expect(Number(bolt.getAttribute('height'))).toBeGreaterThan(Number(bolt.getAttribute('width')))
+    expect(bolt.querySelector('path')).not.toBeNull()
+  }
+})

@@ -10,3 +10,9 @@
 - [x] The chart comes back when loading ends
 - [ ] Works in light and dark themes; no animation with reduced motion
 - [x] `npm run build` and `npm test` pass
+
+## Comments
+
+Each skeleton now has a thin outlined lightning bolt in the centre (`.skeleton-bolt`, 28×42px, 1.5px dark yellow `--bolt` stroke, no fill: `#b8860b` light, `#c9a227` dark).
+
+Covered by `frontend/src/components/RsChart.test.tsx`: every loading skeleton contains the bolt, and it is taller than it is wide.

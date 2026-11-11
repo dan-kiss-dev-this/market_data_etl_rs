@@ -201,6 +201,10 @@ select,
   border-radius: 8px;
   max-height: 760px;
   overflow: auto;
+  /* Still scrolls by wheel, trackpad and touch, just without visible bars */
+  scrollbar-width: none;
+  /* Containing block for .sr-only spans, so the scroll box clips them instead of the page growing */
+  position: relative;
 }
 .leaders {
   width: 100%;

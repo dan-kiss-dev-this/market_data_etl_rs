@@ -30,3 +30,16 @@ If you are developing a production application, we recommend enabling type-aware
 ```
 
 See the [Oxlint rules documentation](https://oxc.rs/docs/guide/usage/linter/rules) for the full list of rules and categories.
+
+## Responsive breakpoints
+
+Width breakpoints live in `src/index.css`:
+
+| Breakpoint | What changes |
+|---|---|
+| `max-width: 960px` | `.layout` collapses to one column, so the table stacks above the chart. `App.tsx` also moves the range picker above the chart at this width. |
+| `max-width: 480px` | The `.name` column is capped at `10ch`, and percentages show as whole numbers (`.pct-whole`) instead of full precision (`.pct-full`). |
+
+The 960px breakpoint is duplicated in JS as `STACKED` in `src/useMediaQuery.ts`. If you change it, update both places. `src/useMediaQuery.test.ts` fails if they drift apart.
+
+`src/App.css` contains `max-width: 1024px` rules, but nothing imports that file, so they have no effect.

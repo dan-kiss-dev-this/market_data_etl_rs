@@ -5,6 +5,7 @@ import LeadersTable from './components/LeadersTable'
 import RsChart from './components/RsChart'
 import { RANGES } from './ranges'
 import type { Range } from './ranges'
+import { STACKED, useMediaQuery } from './useMediaQuery'
 
 function App() {
   const [status, setStatus] = useState<Status | null>(null)
@@ -16,6 +17,7 @@ function App() {
   const [selected, setSelected] = useState<string | null>(null)
   const [detail, setDetail] = useState<TickerDetail | null>(null)
   const [range, setRange] = useState<Range>('1Y')
+  const isStacked = useMediaQuery(STACKED)
 
   useEffect(() => {
     Promise.all([api.status(), api.sectors()])
@@ -69,6 +71,17 @@ function App() {
 
   if (!status) return <main className="app"><p className="muted">Loading…</p></main>
 
+  // When the layout stacks, the range picker sits directly above the chart it controls, below the table
+  const rangePicker = (
+    <div className="segmented" role="group" aria-label="Chart range">
+      {(Object.keys(RANGES) as Range[]).map((r) => (
+        <button key={r} type="button" aria-pressed={r === range} onClick={() => setRange(r)}>
+          {r}
+        </button>
+      ))}
+    </div>
+  )
+
   return (
     <main className="app">
       <header className="app-header">
@@ -102,13 +115,7 @@ function App() {
                 ))}
               </select>
             </label>
-            <div className="segmented" role="group" aria-label="Chart range">
-              {(Object.keys(RANGES) as Range[]).map((r) => (
-                <button key={r} type="button" aria-pressed={r === range} onClick={() => setRange(r)}>
-                  {r}
-                </button>
-              ))}
-            </div>
+            {!isStacked && rangePicker}
             <span className="legend-note muted">
               <span className="new-high" aria-hidden="true" /> RS line at a 52-week high
             </span>
@@ -121,6 +128,7 @@ function App() {
               onSelect={setSelected}
               loading={leaders?.sector !== sector}
             />
+            {isStacked && rangePicker}
             {detail ? (
               <RsChart
                 detail={detail}

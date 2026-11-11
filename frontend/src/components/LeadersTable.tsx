@@ -89,8 +89,6 @@ export default function LeadersTable({ leaders, selected, onSelect, loading }: P
                 </div>
               </td>
               <td className="num"><Change value={l.rating_change_1w} /></td>
-              <td className="num"><Pct value={l.ret_3m} /></td>
-              <td className="num"><Pct value={l.ret_12m} /></td>
               <td className="num">
                 <a
                   className="quote-link"
@@ -101,9 +99,11 @@ export default function LeadersTable({ leaders, selected, onSelect, loading }: P
                   onClick={(e) => e.stopPropagation()}
                   onKeyDown={(e) => e.stopPropagation()}
                 >
-                  {l.close.toFixed(2)}
+                  <Pct value={l.ret_3m} />
                 </a>
               </td>
+              <td className="num"><Pct value={l.ret_12m} /></td>
+              <td className="num">{l.close.toFixed(2)}</td>
             </tr>
           ))}
         </tbody>

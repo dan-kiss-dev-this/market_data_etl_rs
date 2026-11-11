@@ -4,15 +4,15 @@ import { afterEach, expect, test, vi } from 'vitest'
 import type { Leader } from '../api'
 import LeadersTable from './LeadersTable'
 
-function leader(ticker: string, close: number): Leader {
+function leader(ticker: string, ret3m = 0.1): Leader {
   return {
     ticker,
     name: `${ticker} Inc.`,
     sector: 'Health Care',
-    close,
+    close: 50,
     rs_rating: 90,
     rs_score: 1.2,
-    ret_3m: 0.1,
+    ret_3m: ret3m,
     ret_12m: 0.3,
     rs_new_high: false,
     rating_change_1w: null,
@@ -28,9 +28,10 @@ function renderTable(leaders: Leader[]) {
 // Vitest doesn't expose afterEach globally here, so RTL can't clean up on its own
 afterEach(cleanup)
 
-test('close price links to the Yahoo Finance quote page in a new tab', () => {
-  renderTable([leader('MRNA', 123.456)])
-  const link = screen.getByRole('link', { name: '123.46' })
+// jsdom doesn't load index.css, so both of Pct's spans count toward the link text
+test('3M return links to the Yahoo Finance quote page in a new tab', () => {
+  renderTable([leader('MRNA', 0.234)])
+  const link = screen.getByRole('link', { name: /^\+23\.4%/ })
 
   expect(link.getAttribute('href')).toBe('https://finance.yahoo.com/quote/MRNA/')
   expect(link.getAttribute('target')).toBe('_blank')
@@ -38,21 +39,21 @@ test('close price links to the Yahoo Finance quote page in a new tab', () => {
 })
 
 test('ticker is URL-encoded in the link', () => {
-  renderTable([leader('BRK/B', 1)])
+  renderTable([leader('BRK/B')])
   expect(screen.getByRole('link').getAttribute('href')).toBe(
     'https://finance.yahoo.com/quote/BRK%2FB/',
   )
 })
 
-test('clicking the close price does not select the row', () => {
-  const onSelect = renderTable([leader('MRNA', 10)])
+test('clicking the 3M return does not select the row', () => {
+  const onSelect = renderTable([leader('MRNA')])
   fireEvent.click(screen.getByRole('link'))
   expect(onSelect).not.toHaveBeenCalled()
 })
 
 // The row's Enter handler calls preventDefault, which would stop the link from opening
-test('pressing Enter on the close price is not swallowed by the row', () => {
-  const onSelect = renderTable([leader('MRNA', 10)])
+test('pressing Enter on the 3M return is not swallowed by the row', () => {
+  const onSelect = renderTable([leader('MRNA')])
   const notPrevented = fireEvent.keyDown(screen.getByRole('link'), { key: 'Enter' })
 
   expect(notPrevented).toBe(true)
@@ -60,7 +61,13 @@ test('pressing Enter on the close price is not swallowed by the row', () => {
 })
 
 test('clicking elsewhere in the row still selects it', () => {
-  const onSelect = renderTable([leader('MRNA', 10)])
+  const onSelect = renderTable([leader('MRNA')])
   fireEvent.click(screen.getByText('MRNA'))
   expect(onSelect).toHaveBeenCalledWith('MRNA')
+})
+
+test('close price is no longer a link', () => {
+  renderTable([leader('MRNA')])
+  expect(screen.getByText('50.00').closest('a')).toBeNull()
+  expect(screen.getAllByRole('link')).toHaveLength(1)
 })

@@ -18,3 +18,5 @@ CSS can't move it there because the toolbar and the chart have different parents
 At first this used the 480px phone breakpoint. It was changed to 960px so the picker moves whenever the table and chart stack.
 
 `useMediaQuery` is covered by `frontend/src/useMediaQuery.test.ts` (Vitest + jsdom + React Testing Library, run with `npm test` in `frontend/`). The tests check the initial match, live updates across the breakpoint, unsubscribing on unmount, and that `STACKED` is still 960px. These are the frontend's first tests and they don't run in CI yet.
+
+The breakpoint test now reads `index.css` and checks that the `@media` query wrapping `.layout` equals `STACKED`, so changing either one on its own fails the test. A `vitest` job in `.github/workflows/test.yml` runs `npm ci && npm test` in `frontend/` on every push and pull request.

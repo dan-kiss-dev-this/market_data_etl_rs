@@ -1,7 +1,12 @@
 // @vitest-environment jsdom
+/// <reference types="node" />
+import { readFileSync } from 'node:fs'
 import { act, renderHook } from '@testing-library/react'
 import { afterEach, expect, test, vi } from 'vitest'
 import { STACKED, useMediaQuery } from './useMediaQuery'
+
+// Read from disk: Vitest stubs CSS imports (even ?raw) to empty strings
+const css = readFileSync(`${import.meta.dirname}/index.css`, 'utf8')
 
 // jsdom has no matchMedia, so stand in a fake whose match state the test controls
 function fakeMatchMedia(initial: boolean) {
@@ -30,8 +35,11 @@ afterEach(() => {
   vi.unstubAllGlobals()
 })
 
-test('stacked breakpoint matches the .layout breakpoint in index.css', () => {
-  expect(STACKED).toBe('(max-width: 960px)')
+// App.tsx moves the range picker at STACKED; index.css stacks .layout at its own media query.
+// If one changes without the other, the picker moves at a different width than the layout stacks.
+test('STACKED matches the media query that stacks .layout in index.css', () => {
+  const queries = [...css.matchAll(/@media\s*([^{]+?)\s*\{\s*\.layout\s*\{/g)].map((m) => m[1])
+  expect(queries).toEqual([STACKED])
 })
 
 test('returns the current match for the query', () => {

@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react'
 import { api, MIN_BARS } from './api'
 import type { Leader, Status, TickerDetail } from './api'
+import AiResearcher from './components/AiResearcher'
 import LeadersTable from './components/LeadersTable'
 import RsChart from './components/RsChart'
 import { RANGES } from './ranges'
@@ -140,6 +141,7 @@ function App() {
               <div className="chart-card muted">Select a company</div>
             )}
           </div>
+          {detail && <AiResearcher ticker={detail.ticker} name={detail.name} />}
         </>
       )}
     </main>

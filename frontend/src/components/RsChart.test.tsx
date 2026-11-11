@@ -3,7 +3,7 @@ import { cleanup, fireEvent, render } from '@testing-library/react'
 import { Line, LineChart, XAxis, YAxis } from 'recharts'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import type { TickerDetail } from '../api'
-import RsChart, { Crosshair } from './RsChart'
+import RsChart, { ChartSkeleton, Crosshair } from './RsChart'
 
 // Vitest doesn't expose afterEach globally here, so RTL can't clean up on its own
 afterEach(cleanup)
@@ -78,7 +78,7 @@ const detail: TickerDetail = {
 }
 
 test('hovering a panel shows the crosshair in that panel only, and leaving removes it', () => {
-  const { container } = render(<RsChart detail={detail} range="3M" benchmark="SPY" loading={false} />)
+  const { container } = render(<RsChart detail={detail} range="3M" benchmark="SPY" stale={false} />)
   const panels = [...container.querySelectorAll('figure.panel')]
   const rating = panels[2].querySelector(':scope > div')!
 
@@ -91,25 +91,30 @@ test('hovering a panel shows the crosshair in that panel only, and leaving remov
   expect(container.querySelector('.crosshair')).toBeNull()
 })
 
-test('while loading, each panel shows a skeleton of its chart height instead of the chart', () => {
-  const { container, rerender } = render(<RsChart detail={detail} range="3M" benchmark="SPY" loading />)
-  const skeletons = [...container.querySelectorAll<HTMLElement>('figure.panel .panel-skeleton')]
+test('the chart skeleton has one panel per chart, at the chart heights', () => {
+  const { container } = render(<ChartSkeleton />)
+  const skeletons = [...container.querySelectorAll<HTMLElement>('figure.panel .skeleton-panel')]
 
   expect(skeletons.map((s) => s.style.height)).toEqual(['180px', '150px', '150px'])
-  expect(container.querySelector('.recharts-wrapper')).toBeNull()
-
-  rerender(<RsChart detail={detail} range="3M" benchmark="SPY" loading={false} />)
-  expect(container.querySelector('.panel-skeleton')).toBeNull()
-  expect(container.querySelectorAll('.recharts-wrapper')).toHaveLength(3)
+  expect(container.querySelector('section')?.getAttribute('aria-busy')).toBe('true')
 })
 
-test('each loading skeleton shows a lightning bolt, taller than it is wide', () => {
-  const { container } = render(<RsChart detail={detail} range="3M" benchmark="SPY" loading />)
-  const bolts = [...container.querySelectorAll('.panel-skeleton > svg.skeleton-bolt')]
+test('each skeleton panel shows a lightning bolt, taller than it is wide', () => {
+  const { container } = render(<ChartSkeleton />)
+  const bolts = [...container.querySelectorAll('.skeleton-panel > svg.skeleton-bolt')]
 
   expect(bolts).toHaveLength(3)
   for (const bolt of bolts) {
     expect(Number(bolt.getAttribute('height'))).toBeGreaterThan(Number(bolt.getAttribute('width')))
     expect(bolt.querySelector('path')).not.toBeNull()
   }
+})
+
+test('a stale chart stays drawn, dimmed and marked busy', () => {
+  const { container } = render(<RsChart detail={detail} range="3M" benchmark="SPY" stale />)
+  const card = container.querySelector('section.chart-card')!
+
+  expect(card.classList.contains('is-loading')).toBe(true)
+  expect(card.getAttribute('aria-busy')).toBe('true')
+  expect(container.querySelectorAll('.recharts-wrapper')).toHaveLength(3)
 })

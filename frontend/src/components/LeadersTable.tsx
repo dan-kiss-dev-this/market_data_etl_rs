@@ -4,7 +4,7 @@ type Props = {
   leaders: Leader[]
   selected: string | null
   onSelect: (ticker: string) => void
-  loading: boolean
+  stale: boolean
 }
 
 const pct = (v: number) => `${v >= 0 ? '+' : ''}${(v * 100).toFixed(1)}%`
@@ -38,21 +38,49 @@ function Change({ value }: { value: number | null }) {
   )
 }
 
-export default function LeadersTable({ leaders, selected, onSelect, loading }: Props) {
+const COLUMNS = 7
+
+function Head() {
   return (
-    <div className={`table-wrap${loading ? ' is-loading' : ''}`}>
+    <thead>
+      <tr>
+        <th className="num">#</th>
+        <th>Stock</th>
+        <th className="num">RS Rating</th>
+        <th className="num" title="Rating change vs. 5 trading days ago">1W</th>
+        <th className="num">3M</th>
+        <th className="num">12M</th>
+        <th className="num">Close</th>
+      </tr>
+    </thead>
+  )
+}
+
+// The real header over shimmer rows, in the same box, for before the first leaders arrive
+export function LeadersTableSkeleton({ rows = 10 }: { rows?: number }) {
+  return (
+    <div className="table-wrap" aria-busy="true" aria-label="Loading leaders">
       <table className="leaders">
-        <thead>
-          <tr>
-            <th className="num">#</th>
-            <th>Stock</th>
-            <th className="num">RS Rating</th>
-            <th className="num" title="Rating change vs. 5 trading days ago">1W</th>
-            <th className="num">3M</th>
-            <th className="num">12M</th>
-            <th className="num">Close</th>
-          </tr>
-        </thead>
+        <Head />
+        <tbody aria-hidden="true">
+          {Array.from({ length: rows }, (_, i) => (
+            <tr key={i}>
+              <td colSpan={COLUMNS}>
+                <div className="skeleton skeleton-row" />
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
+  )
+}
+
+export default function LeadersTable({ leaders, selected, onSelect, stale }: Props) {
+  return (
+    <div className={`table-wrap${stale ? ' is-loading' : ''}`} aria-busy={stale}>
+      <table className="leaders">
+        <Head />
         <tbody>
           {leaders.map((l, i) => (
             <tr

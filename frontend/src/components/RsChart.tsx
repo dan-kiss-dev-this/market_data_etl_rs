@@ -73,6 +73,32 @@ export function Crosshair({ y, format }: { y: number | null; format: (v: number)
   )
 }
 
+const PANEL_HEIGHTS = { price: 180, rsLine: 150, rsRating: 150 }
+
+// Stands in for a chart at the same height, so the card doesn't jump when the data lands
+function PanelSkeleton({ height }: { height: number }) {
+  return (
+    <div className="skeleton skeleton-panel" style={{ height }} aria-hidden="true">
+      <svg className="skeleton-bolt" viewBox="0 0 24 36" width={28} height={42}>
+        <path d="M13 2 4 20h7l-1 14 9-18h-7z" />
+      </svg>
+    </div>
+  )
+}
+
+// The whole chart card, for before the first ticker arrives
+export function ChartSkeleton() {
+  return (
+    <section className="chart-card" aria-label="Loading charts" aria-busy>
+      {Object.values(PANEL_HEIGHTS).map((height, i) => (
+        <figure className="panel" key={i}>
+          <PanelSkeleton height={height} />
+        </figure>
+      ))}
+    </section>
+  )
+}
+
 type PanelProps = {
   title: string
   subtitle: string
@@ -83,10 +109,9 @@ type PanelProps = {
   showXAxis?: boolean
   domain?: [number, number]
   reference?: { y: number; label: string }
-  loading: boolean
 }
 
-function Panel({ title, subtitle, rows, dataKey, format, height, showXAxis, domain, reference, loading }: PanelProps) {
+function Panel({ title, subtitle, rows, dataKey, format, height, showXAxis, domain, reference }: PanelProps) {
   const [mouseY, setMouseY] = useState<number | null>(null)
   return (
     <figure className="panel">
@@ -94,82 +119,77 @@ function Panel({ title, subtitle, rows, dataKey, format, height, showXAxis, doma
         <span className="panel-title">{title}</span>
         <span className="muted">{subtitle}</span>
       </figcaption>
-      {/* Same height as the chart, so the card doesn't jump when the data lands */}
-      {loading ? (
-        <div className="panel-skeleton" style={{ height }} aria-hidden="true">
-          <svg className="skeleton-bolt" viewBox="0 0 24 36" width={28} height={42}>
-            <path d="M13 2 4 20h7l-1 14 9-18h-7z" />
-          </svg>
-        </div>
-      ) : (
-        <div
-          onMouseMove={(e) => setMouseY(e.clientY - e.currentTarget.getBoundingClientRect().top)}
-          onMouseLeave={() => setMouseY(null)}
-        >
-          <ResponsiveContainer width="100%" height={height}>
-            <LineChart data={rows} syncId="rs" margin={MARGIN}>
-              <CartesianGrid vertical={false} stroke="var(--grid)" />
-              <XAxis
-                dataKey="date"
-                hide={!showXAxis}
-                tickFormatter={fmtDate}
-                tick={AXIS_TICK}
-                tickLine={false}
-                axisLine={{ stroke: 'var(--axis)' }}
-                minTickGap={48}
+      <div
+        onMouseMove={(e) => setMouseY(e.clientY - e.currentTarget.getBoundingClientRect().top)}
+        onMouseLeave={() => setMouseY(null)}
+      >
+        <ResponsiveContainer width="100%" height={height}>
+          <LineChart data={rows} syncId="rs" margin={MARGIN}>
+            <CartesianGrid vertical={false} stroke="var(--grid)" />
+            <XAxis
+              dataKey="date"
+              hide={!showXAxis}
+              tickFormatter={fmtDate}
+              tick={AXIS_TICK}
+              tickLine={false}
+              axisLine={{ stroke: 'var(--axis)' }}
+              minTickGap={48}
+            />
+            <YAxis
+              domain={domain ?? ['auto', 'auto']}
+              tickFormatter={(v: number) => format(v)}
+              tick={AXIS_TICK}
+              tickLine={false}
+              axisLine={false}
+              width={52}
+              tickCount={4}
+            />
+            {reference && (
+              <ReferenceLine
+                y={reference.y}
+                stroke="var(--axis)"
+                label={{ value: reference.label, position: 'insideTopLeft', fill: 'var(--text-muted)', fontSize: 12 }}
               />
-              <YAxis
-                domain={domain ?? ['auto', 'auto']}
-                tickFormatter={(v: number) => format(v)}
-                tick={AXIS_TICK}
-                tickLine={false}
-                axisLine={false}
-                width={52}
-                tickCount={4}
-              />
-              {reference && (
-                <ReferenceLine
-                  y={reference.y}
-                  stroke="var(--axis)"
-                  label={{ value: reference.label, position: 'insideTopLeft', fill: 'var(--text-muted)', fontSize: 12 }}
-                />
-              )}
-              <Tooltip
-                content={makeTooltip(title, format)}
-                cursor={{ stroke: '#ffffff', strokeWidth: 1 }}
-                isAnimationActive={false}
-              />
-              <Line
-                dataKey={dataKey}
-                stroke="var(--series-1)"
-                strokeWidth={2}
-                strokeLinejoin="round"
-                strokeLinecap="round"
-                dot={false}
-                activeDot={{ r: 4, fill: 'var(--series-1)', stroke: 'var(--surface)', strokeWidth: 2 }}
-                label={endLabel(rows, dataKey, format)}
-                isAnimationActive={false}
-              />
-              <Crosshair y={mouseY} format={format} />
-            </LineChart>
-          </ResponsiveContainer>
-        </div>
-      )}
+            )}
+            <Tooltip
+              content={makeTooltip(title, format)}
+              cursor={{ stroke: '#ffffff', strokeWidth: 1 }}
+              isAnimationActive={false}
+            />
+            <Line
+              dataKey={dataKey}
+              stroke="var(--series-1)"
+              strokeWidth={2}
+              strokeLinejoin="round"
+              strokeLinecap="round"
+              dot={false}
+              activeDot={{ r: 4, fill: 'var(--series-1)', stroke: 'var(--surface)', strokeWidth: 2 }}
+              label={endLabel(rows, dataKey, format)}
+              isAnimationActive={false}
+            />
+            <Crosshair y={mouseY} format={format} />
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
     </figure>
   )
 }
 
-type Props = { detail: TickerDetail; range: Range; benchmark: string; loading: boolean }
+type Props = { detail: TickerDetail; range: Range; benchmark: string; stale: boolean }
 
-export default function RsChart({ detail, range, benchmark, loading }: Props) {
+export default function RsChart({ detail, range, benchmark, stale }: Props) {
   const series = detail.series.slice(-Math.min(RANGES[range], detail.series.length))
   const base = series[0]?.rs_line ?? 1
   const rows: Row[] = series.map((p) => ({ ...p, rs_index: (100 * p.rs_line) / base }))
   const firstRated = rows.find((r) => r.rs_rating !== null)
 
   return (
-    <section className="chart-card" aria-label={`${detail.ticker} charts`} aria-busy={loading}>
-      <header className={`chart-header${loading ? ' is-loading' : ''}`}>
+    <section
+      className={`chart-card${stale ? ' is-loading' : ''}`}
+      aria-label={`${detail.ticker} charts`}
+      aria-busy={stale}
+    >
+      <header className="chart-header">
         <h2>
           {detail.ticker} <span className="muted">{detail.name}</span>
         </h2>
@@ -181,8 +201,7 @@ export default function RsChart({ detail, range, benchmark, loading }: Props) {
         rows={rows}
         dataKey="close"
         format={(v) => `$${v.toFixed(v >= 1000 ? 0 : 2)}`}
-        height={180}
-        loading={loading}
+        height={PANEL_HEIGHTS.price}
       />
       <Panel
         title="RS line"
@@ -190,9 +209,8 @@ export default function RsChart({ detail, range, benchmark, loading }: Props) {
         rows={rows}
         dataKey="rs_index"
         format={(v) => v.toFixed(0)}
-        height={150}
+        height={PANEL_HEIGHTS.rsLine}
         reference={{ y: 100, label: `Even with ${benchmark}` }}
-        loading={loading}
       />
       <Panel
         title="RS Rating"
@@ -204,11 +222,10 @@ export default function RsChart({ detail, range, benchmark, loading }: Props) {
         rows={rows}
         dataKey="rs_rating"
         format={(v) => v.toFixed(0)}
-        height={150}
+        height={PANEL_HEIGHTS.rsRating}
         domain={[0, 100]}
         reference={{ y: 80, label: '80: IBD buy threshold' }}
         showXAxis
-        loading={loading}
       />
     </section>
   )

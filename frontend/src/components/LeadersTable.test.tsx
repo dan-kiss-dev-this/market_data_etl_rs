@@ -2,7 +2,7 @@
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import { afterEach, expect, test, vi } from 'vitest'
 import type { Leader } from '../api'
-import LeadersTable from './LeadersTable'
+import LeadersTable, { LeadersTableSkeleton } from './LeadersTable'
 
 function leader(ticker: string, ret3m = 0.1): Leader {
   return {
@@ -21,7 +21,7 @@ function leader(ticker: string, ret3m = 0.1): Leader {
 
 function renderTable(leaders: Leader[]) {
   const onSelect = vi.fn()
-  render(<LeadersTable leaders={leaders} selected={null} onSelect={onSelect} loading={false} />)
+  render(<LeadersTable leaders={leaders} selected={null} onSelect={onSelect} stale={false} />)
   return onSelect
 }
 
@@ -70,4 +70,15 @@ test('close price is no longer a link', () => {
   renderTable([leader('MRNA')])
   expect(screen.getByText('50.00').closest('a')).toBeNull()
   expect(screen.getAllByRole('link')).toHaveLength(1)
+})
+
+test('the skeleton keeps the real header over shimmer rows that span every column', () => {
+  const { container } = render(<LeadersTableSkeleton rows={4} />)
+
+  expect([...container.querySelectorAll('th')].map((th) => th.textContent)).toEqual([
+    '#', 'Stock', 'RS Rating', '1W', '3M', '12M', 'Close',
+  ])
+  const cells = [...container.querySelectorAll('tbody td')]
+  expect(cells).toHaveLength(4)
+  expect(cells.every((td) => td.getAttribute('colspan') === '7' && td.querySelector('.skeleton-row'))).toBe(true)
 })

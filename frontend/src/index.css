@@ -148,6 +148,10 @@ code {
   align-items: center;
   gap: 8px;
 }
+/* Wider than the longest sector, so the loading placeholder is the same size and nothing shifts */
+.filters select {
+  min-width: 15rem;
+}
 select,
 .segmented button {
   font: inherit;
@@ -370,10 +374,21 @@ select,
   font-weight: 600;
   color: var(--text-primary);
 }
-.panel-skeleton {
+.skeleton {
   border-radius: 6px;
   background: linear-gradient(90deg, var(--grid) 25%, var(--surface) 50%, var(--grid) 75%) 0 0 / 200% 100%;
   animation: shimmer 1.2s linear infinite;
+}
+.skeleton-text {
+  display: inline-block;
+  height: 1em;
+  vertical-align: -0.15em;
+  border-radius: 4px;
+}
+.skeleton-row {
+  height: 34px;
+}
+.skeleton-panel {
   display: flex;
   align-items: center;
   justify-content: center;
@@ -390,7 +405,7 @@ select,
   }
 }
 @media (prefers-reduced-motion: reduce) {
-  .panel-skeleton {
+  .skeleton {
     animation: none;
   }
 }

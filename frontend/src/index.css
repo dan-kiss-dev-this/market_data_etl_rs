@@ -261,17 +261,6 @@ select,
 .pct-whole {
   display: none;
 }
-@media (max-width: 480px) {
-  .name {
-    max-width: 10ch;
-  }
-  .pct-full {
-    display: none;
-  }
-  .pct-whole {
-    display: inline;
-  }
-}
 .new-high {
   display: inline-block;
   width: 8px;
@@ -307,6 +296,21 @@ select,
 }
 .delta-down {
   color: var(--delta-down);
+}
+/* Mobile overrides: keep after the table rules above so they win the cascade */
+@media (max-width: 480px) {
+  .name {
+    max-width: 10ch;
+  }
+  .pct-full {
+    display: none;
+  }
+  .pct-whole {
+    display: inline;
+  }
+  .meter {
+    width: 24px;
+  }
 }
 
 /* Charts */

@@ -88,9 +88,9 @@ function App() {
         <h1>S&amp;P 500 RS Leaders</h1>
         <p className="muted">
           IBD-style Relative Strength: 12-month performance vs. {status.benchmark}, weighted toward the latest
-          quarter, ranked 1–99. Not RSI.
-          {status.rated_date && <> Ratings as of <strong>{status.rated_date}</strong>.</>}
+          quarter, ranked 1–99.
         </p>
+        <p>{status.rated_date && <> Ratings as of <strong>{status.rated_date}</strong>.</>}</p>
       </header>
 
       {!status.rated_date ? (

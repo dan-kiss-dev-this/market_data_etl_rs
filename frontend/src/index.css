@@ -311,6 +311,9 @@ select,
   .meter {
     width: 24px;
   }
+  .table-wrap {
+    max-height: 300px;
+  }
 }
 
 /* Charts */

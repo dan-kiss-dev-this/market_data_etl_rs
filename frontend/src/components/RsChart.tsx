@@ -7,7 +7,10 @@ import {
   Tooltip,
   XAxis,
   YAxis,
+  usePlotArea,
+  useYAxisInverseScale,
 } from 'recharts'
+import { useState } from 'react'
 import type { TooltipContentProps } from 'recharts'
 import type { Point, TickerDetail } from '../api'
 import { RANGES } from '../ranges'
@@ -53,6 +56,23 @@ function endLabel(rows: Row[], key: keyof Row, format: (v: number) => string) {
   }
 }
 
+// Horizontal half of the crosshair; the vertical half is the Tooltip cursor
+export function Crosshair({ y, format }: { y: number | null; format: (v: number) => string }) {
+  const plot = usePlotArea()
+  const invert = useYAxisInverseScale()
+  if (y == null || !plot || !invert || y < plot.y || y > plot.y + plot.height) return null
+  const value = Number(invert(y))
+  return (
+    <g className="crosshair" pointerEvents="none">
+      <line x1={plot.x} x2={plot.x + plot.width} y1={y} y2={y} stroke="#ffffff" strokeWidth={1} />
+      <rect x={plot.x - 50} y={y - 9} width={48} height={18} rx={4} className="crosshair-pill" />
+      <text x={plot.x - 26} y={y} dy={4} textAnchor="middle" className="crosshair-label">
+        {format(value)}
+      </text>
+    </g>
+  )
+}
+
 type PanelProps = {
   title: string
   subtitle: string
@@ -66,58 +86,65 @@ type PanelProps = {
 }
 
 function Panel({ title, subtitle, rows, dataKey, format, height, showXAxis, domain, reference }: PanelProps) {
+  const [mouseY, setMouseY] = useState<number | null>(null)
   return (
     <figure className="panel">
       <figcaption>
         <span className="panel-title">{title}</span>
         <span className="muted">{subtitle}</span>
       </figcaption>
-      <ResponsiveContainer width="100%" height={height}>
-        <LineChart data={rows} syncId="rs" margin={MARGIN}>
-          <CartesianGrid vertical={false} stroke="var(--grid)" />
-          <XAxis
-            dataKey="date"
-            hide={!showXAxis}
-            tickFormatter={fmtDate}
-            tick={AXIS_TICK}
-            tickLine={false}
-            axisLine={{ stroke: 'var(--axis)' }}
-            minTickGap={48}
-          />
-          <YAxis
-            domain={domain ?? ['auto', 'auto']}
-            tickFormatter={(v: number) => format(v)}
-            tick={AXIS_TICK}
-            tickLine={false}
-            axisLine={false}
-            width={52}
-            tickCount={4}
-          />
-          {reference && (
-            <ReferenceLine
-              y={reference.y}
-              stroke="var(--axis)"
-              label={{ value: reference.label, position: 'insideTopLeft', fill: 'var(--text-muted)', fontSize: 12 }}
+      <div
+        onMouseMove={(e) => setMouseY(e.clientY - e.currentTarget.getBoundingClientRect().top)}
+        onMouseLeave={() => setMouseY(null)}
+      >
+        <ResponsiveContainer width="100%" height={height}>
+          <LineChart data={rows} syncId="rs" margin={MARGIN}>
+            <CartesianGrid vertical={false} stroke="var(--grid)" />
+            <XAxis
+              dataKey="date"
+              hide={!showXAxis}
+              tickFormatter={fmtDate}
+              tick={AXIS_TICK}
+              tickLine={false}
+              axisLine={{ stroke: 'var(--axis)' }}
+              minTickGap={48}
             />
-          )}
-          <Tooltip
-            content={makeTooltip(title, format)}
-            cursor={{ stroke: 'var(--axis)', strokeWidth: 1 }}
-            isAnimationActive={false}
-          />
-          <Line
-            dataKey={dataKey}
-            stroke="var(--series-1)"
-            strokeWidth={2}
-            strokeLinejoin="round"
-            strokeLinecap="round"
-            dot={false}
-            activeDot={{ r: 4, fill: 'var(--series-1)', stroke: 'var(--surface)', strokeWidth: 2 }}
-            label={endLabel(rows, dataKey, format)}
-            isAnimationActive={false}
-          />
-        </LineChart>
-      </ResponsiveContainer>
+            <YAxis
+              domain={domain ?? ['auto', 'auto']}
+              tickFormatter={(v: number) => format(v)}
+              tick={AXIS_TICK}
+              tickLine={false}
+              axisLine={false}
+              width={52}
+              tickCount={4}
+            />
+            {reference && (
+              <ReferenceLine
+                y={reference.y}
+                stroke="var(--axis)"
+                label={{ value: reference.label, position: 'insideTopLeft', fill: 'var(--text-muted)', fontSize: 12 }}
+              />
+            )}
+            <Tooltip
+              content={makeTooltip(title, format)}
+              cursor={{ stroke: '#ffffff', strokeWidth: 1 }}
+              isAnimationActive={false}
+            />
+            <Line
+              dataKey={dataKey}
+              stroke="var(--series-1)"
+              strokeWidth={2}
+              strokeLinejoin="round"
+              strokeLinecap="round"
+              dot={false}
+              activeDot={{ r: 4, fill: 'var(--series-1)', stroke: 'var(--surface)', strokeWidth: 2 }}
+              label={endLabel(rows, dataKey, format)}
+              isAnimationActive={false}
+            />
+            <Crosshair y={mouseY} format={format} />
+          </LineChart>
+        </ResponsiveContainer>
+      </div>
     </figure>
   )
 }

@@ -370,6 +370,15 @@ select,
   font-weight: 600;
   font-variant-numeric: tabular-nums;
 }
+.crosshair-pill {
+  fill: var(--surface);
+  stroke: var(--axis);
+}
+.crosshair-label {
+  fill: var(--text-secondary);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+}
 .tooltip {
   background: var(--surface);
   border: 1px solid var(--border);

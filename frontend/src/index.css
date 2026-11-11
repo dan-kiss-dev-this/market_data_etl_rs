@@ -242,6 +242,15 @@ select,
   outline: 2px solid var(--series-1);
   outline-offset: -2px;
 }
+.quote-link {
+  color: inherit;
+  text-decoration: underline dotted var(--text-muted);
+  text-underline-offset: 3px;
+}
+.quote-link:hover {
+  color: var(--series-1);
+  text-decoration-color: currentColor;
+}
 .stock {
   display: flex;
   align-items: center;

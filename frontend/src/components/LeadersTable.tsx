@@ -91,7 +91,19 @@ export default function LeadersTable({ leaders, selected, onSelect, loading }: P
               <td className="num"><Change value={l.rating_change_1w} /></td>
               <td className="num"><Pct value={l.ret_3m} /></td>
               <td className="num"><Pct value={l.ret_12m} /></td>
-              <td className="num">{l.close.toFixed(2)}</td>
+              <td className="num">
+                <a
+                  className="quote-link"
+                  href={`https://finance.yahoo.com/quote/${encodeURIComponent(l.ticker)}/`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  title={`Open ${l.ticker} on Yahoo Finance`}
+                  onClick={(e) => e.stopPropagation()}
+                  onKeyDown={(e) => e.stopPropagation()}
+                >
+                  {l.close.toFixed(2)}
+                </a>
+              </td>
             </tr>
           ))}
         </tbody>

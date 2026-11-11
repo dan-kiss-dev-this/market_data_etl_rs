@@ -137,7 +137,7 @@ function App() {
                 loading={detail.ticker !== selected}
               />
             ) : (
-              <div className="chart-card muted">Select a stock</div>
+              <div className="chart-card muted">Select a company</div>
             )}
           </div>
         </>

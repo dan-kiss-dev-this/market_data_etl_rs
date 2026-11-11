@@ -83,9 +83,10 @@ type PanelProps = {
   showXAxis?: boolean
   domain?: [number, number]
   reference?: { y: number; label: string }
+  loading: boolean
 }
 
-function Panel({ title, subtitle, rows, dataKey, format, height, showXAxis, domain, reference }: PanelProps) {
+function Panel({ title, subtitle, rows, dataKey, format, height, showXAxis, domain, reference, loading }: PanelProps) {
   const [mouseY, setMouseY] = useState<number | null>(null)
   return (
     <figure className="panel">
@@ -93,58 +94,63 @@ function Panel({ title, subtitle, rows, dataKey, format, height, showXAxis, doma
         <span className="panel-title">{title}</span>
         <span className="muted">{subtitle}</span>
       </figcaption>
-      <div
-        onMouseMove={(e) => setMouseY(e.clientY - e.currentTarget.getBoundingClientRect().top)}
-        onMouseLeave={() => setMouseY(null)}
-      >
-        <ResponsiveContainer width="100%" height={height}>
-          <LineChart data={rows} syncId="rs" margin={MARGIN}>
-            <CartesianGrid vertical={false} stroke="var(--grid)" />
-            <XAxis
-              dataKey="date"
-              hide={!showXAxis}
-              tickFormatter={fmtDate}
-              tick={AXIS_TICK}
-              tickLine={false}
-              axisLine={{ stroke: 'var(--axis)' }}
-              minTickGap={48}
-            />
-            <YAxis
-              domain={domain ?? ['auto', 'auto']}
-              tickFormatter={(v: number) => format(v)}
-              tick={AXIS_TICK}
-              tickLine={false}
-              axisLine={false}
-              width={52}
-              tickCount={4}
-            />
-            {reference && (
-              <ReferenceLine
-                y={reference.y}
-                stroke="var(--axis)"
-                label={{ value: reference.label, position: 'insideTopLeft', fill: 'var(--text-muted)', fontSize: 12 }}
+      {/* Same height as the chart, so the card doesn't jump when the data lands */}
+      {loading ? (
+        <div className="panel-skeleton" style={{ height }} aria-hidden="true" />
+      ) : (
+        <div
+          onMouseMove={(e) => setMouseY(e.clientY - e.currentTarget.getBoundingClientRect().top)}
+          onMouseLeave={() => setMouseY(null)}
+        >
+          <ResponsiveContainer width="100%" height={height}>
+            <LineChart data={rows} syncId="rs" margin={MARGIN}>
+              <CartesianGrid vertical={false} stroke="var(--grid)" />
+              <XAxis
+                dataKey="date"
+                hide={!showXAxis}
+                tickFormatter={fmtDate}
+                tick={AXIS_TICK}
+                tickLine={false}
+                axisLine={{ stroke: 'var(--axis)' }}
+                minTickGap={48}
               />
-            )}
-            <Tooltip
-              content={makeTooltip(title, format)}
-              cursor={{ stroke: '#ffffff', strokeWidth: 1 }}
-              isAnimationActive={false}
-            />
-            <Line
-              dataKey={dataKey}
-              stroke="var(--series-1)"
-              strokeWidth={2}
-              strokeLinejoin="round"
-              strokeLinecap="round"
-              dot={false}
-              activeDot={{ r: 4, fill: 'var(--series-1)', stroke: 'var(--surface)', strokeWidth: 2 }}
-              label={endLabel(rows, dataKey, format)}
-              isAnimationActive={false}
-            />
-            <Crosshair y={mouseY} format={format} />
-          </LineChart>
-        </ResponsiveContainer>
-      </div>
+              <YAxis
+                domain={domain ?? ['auto', 'auto']}
+                tickFormatter={(v: number) => format(v)}
+                tick={AXIS_TICK}
+                tickLine={false}
+                axisLine={false}
+                width={52}
+                tickCount={4}
+              />
+              {reference && (
+                <ReferenceLine
+                  y={reference.y}
+                  stroke="var(--axis)"
+                  label={{ value: reference.label, position: 'insideTopLeft', fill: 'var(--text-muted)', fontSize: 12 }}
+                />
+              )}
+              <Tooltip
+                content={makeTooltip(title, format)}
+                cursor={{ stroke: '#ffffff', strokeWidth: 1 }}
+                isAnimationActive={false}
+              />
+              <Line
+                dataKey={dataKey}
+                stroke="var(--series-1)"
+                strokeWidth={2}
+                strokeLinejoin="round"
+                strokeLinecap="round"
+                dot={false}
+                activeDot={{ r: 4, fill: 'var(--series-1)', stroke: 'var(--surface)', strokeWidth: 2 }}
+                label={endLabel(rows, dataKey, format)}
+                isAnimationActive={false}
+              />
+              <Crosshair y={mouseY} format={format} />
+            </LineChart>
+          </ResponsiveContainer>
+        </div>
+      )}
     </figure>
   )
 }
@@ -158,8 +164,8 @@ export default function RsChart({ detail, range, benchmark, loading }: Props) {
   const firstRated = rows.find((r) => r.rs_rating !== null)
 
   return (
-    <section className={`chart-card${loading ? ' is-loading' : ''}`} aria-label={`${detail.ticker} charts`}>
-      <header className="chart-header">
+    <section className="chart-card" aria-label={`${detail.ticker} charts`} aria-busy={loading}>
+      <header className={`chart-header${loading ? ' is-loading' : ''}`}>
         <h2>
           {detail.ticker} <span className="muted">{detail.name}</span>
         </h2>
@@ -172,6 +178,7 @@ export default function RsChart({ detail, range, benchmark, loading }: Props) {
         dataKey="close"
         format={(v) => `$${v.toFixed(v >= 1000 ? 0 : 2)}`}
         height={180}
+        loading={loading}
       />
       <Panel
         title="RS line"
@@ -181,6 +188,7 @@ export default function RsChart({ detail, range, benchmark, loading }: Props) {
         format={(v) => v.toFixed(0)}
         height={150}
         reference={{ y: 100, label: `Even with ${benchmark}` }}
+        loading={loading}
       />
       <Panel
         title="RS Rating"
@@ -196,6 +204,7 @@ export default function RsChart({ detail, range, benchmark, loading }: Props) {
         domain={[0, 100]}
         reference={{ y: 80, label: '80: IBD buy threshold' }}
         showXAxis
+        loading={loading}
       />
     </section>
   )

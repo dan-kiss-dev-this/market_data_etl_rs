@@ -90,3 +90,15 @@ test('hovering a panel shows the crosshair in that panel only, and leaving remov
   fireEvent.mouseLeave(rating)
   expect(container.querySelector('.crosshair')).toBeNull()
 })
+
+test('while loading, each panel shows a skeleton of its chart height instead of the chart', () => {
+  const { container, rerender } = render(<RsChart detail={detail} range="3M" benchmark="SPY" loading />)
+  const skeletons = [...container.querySelectorAll<HTMLElement>('figure.panel .panel-skeleton')]
+
+  expect(skeletons.map((s) => s.style.height)).toEqual(['180px', '150px', '150px'])
+  expect(container.querySelector('.recharts-wrapper')).toBeNull()
+
+  rerender(<RsChart detail={detail} range="3M" benchmark="SPY" loading={false} />)
+  expect(container.querySelector('.panel-skeleton')).toBeNull()
+  expect(container.querySelectorAll('.recharts-wrapper')).toHaveLength(3)
+})

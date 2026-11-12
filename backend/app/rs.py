@@ -2,7 +2,7 @@
 weighted toward the latest quarter, then ranked 1-99 across the universe."""
 
 from bisect import bisect_left, bisect_right
-from collections.abc import Sequence
+from collections.abc import Mapping, Sequence
 
 LOOKBACKS = (63, 126, 189, 252)  # trading days: ~3, 6, 9, 12 months
 WEIGHTS = (0.4, 0.2, 0.2, 0.2)
@@ -58,7 +58,7 @@ def is_new_high(line: Sequence[float | None], i: int, window: int = NEW_HIGH_WIN
 
 
 def compute_ratings(
-    dates: Sequence[str], benchmark: Closes, closes_by_ticker: dict[str, Closes]
+    dates: Sequence[str], benchmark: Closes, closes_by_ticker: Mapping[str, Closes]
 ) -> list[dict]:
     """One row per (date, ticker) that has enough history. All series align with dates."""
     lines = {t: rs_line(c, benchmark) for t, c in closes_by_ticker.items()}

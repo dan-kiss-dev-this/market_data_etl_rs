@@ -16,7 +16,7 @@ from psycopg.types.json import Jsonb
 from pydantic import BaseModel, ValidationError
 
 from app.config import ANTHROPIC_API_KEY, BLURB_MODEL, LEADER_COUNT
-from app.db import connect, init_schema
+from app.db import Row, connect, init_schema, one
 from app.etl import weekdays
 from app.market import market_direction
 from app.massive import MassiveClient
@@ -85,7 +85,7 @@ def trading_days_behind(rated: str, today: date) -> int:
     return len(weekdays(date.fromisoformat(rated) + timedelta(days=1), today - timedelta(days=1)))
 
 
-def load_leaders(conn: psycopg.Connection, rated: str, limit: int = LEADER_COUNT) -> list[dict]:
+def load_leaders(conn: psycopg.Connection[Row], rated: str, limit: int = LEADER_COUNT) -> list[dict]:
     """The Leaders on the rated date, ordered like /api/rs/leaders, with their rank in their sector."""
     prev = conn.execute(
         "SELECT DISTINCT date FROM rs_ratings WHERE date < %s ORDER BY date DESC LIMIT 1 OFFSET 4", (rated,)
@@ -108,7 +108,7 @@ def load_leaders(conn: psycopg.Connection, rated: str, limit: int = LEADER_COUNT
     return [dict(r) for r in rows]
 
 
-def company_description(conn: psycopg.Connection, client: MassiveClient, ticker: str, today: date) -> str:
+def company_description(conn: psycopg.Connection[Row], client: MassiveClient, ticker: str, today: date) -> str:
     """The saved description, re-fetched from Massive when missing or over 90 days old."""
     row = conn.execute("SELECT description, fetched_at FROM company_profiles WHERE ticker = %s", (ticker,)).fetchone()
     if row and date.fromisoformat(row["fetched_at"]) > today - DESCRIPTION_MAX_AGE:
@@ -185,7 +185,7 @@ def too_many_failures(skipped: list[str]) -> bool:
     return len(skipped) > MAX_FAILURES
 
 
-def save_blurb(conn: psycopg.Connection, ticker: str, rated: str, blurb: Blurb, headlines: list[dict]) -> None:
+def save_blurb(conn: psycopg.Connection[Row], ticker: str, rated: str, blurb: Blurb, headlines: list[dict]) -> None:
     with conn.transaction():
         conn.execute(
             """INSERT INTO blurbs VALUES (%s, %s, %s, %s, %s, %s)
@@ -202,7 +202,7 @@ def save_blurb(conn: psycopg.Connection, ticker: str, rated: str, blurb: Blurb, 
         )
 
 
-def save_market(conn: psycopg.Connection, market: dict) -> None:
+def save_market(conn: psycopg.Connection[Row], market: dict) -> None:
     with conn.transaction():
         conn.execute(
             "INSERT INTO market_directions VALUES (%s, %s) ON CONFLICT (date) DO UPDATE SET data = EXCLUDED.data",
@@ -211,7 +211,7 @@ def save_market(conn: psycopg.Connection, market: dict) -> None:
 
 
 def run(
-    conn: psycopg.Connection,
+    conn: psycopg.Connection[Row],
     massive: MassiveClient,
     ai: anthropic.Anthropic,
     rated: str,
@@ -264,7 +264,7 @@ def main() -> None:
 
     conn = connect()
     init_schema(conn)
-    rated = conn.execute("SELECT MAX(date) FROM rs_ratings").fetchone()[0]
+    rated = one(conn.execute("SELECT MAX(date) FROM rs_ratings"))[0]
     if rated is None:
         raise SystemExit("No RS Ratings yet; run the ETL first")
     today = date.today()

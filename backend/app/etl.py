@@ -14,7 +14,7 @@ import psycopg
 
 from app import rs
 from app.config import BENCHMARK, CONSTITUENTS_URL
-from app.db import connect, init_schema
+from app.db import Row, connect, init_schema, one
 from app.massive import MIN_SECONDS_BETWEEN_CALLS, MassiveClient, bar_date
 
 DEFAULT_DAYS = 725  # just inside the free tier's 2-year history limit
@@ -25,7 +25,7 @@ UPSERT_BAR = """INSERT INTO daily_bars VALUES (%s, %s, %s, %s)
 RS_COLUMNS = ("date", "ticker", "rs_score", "rs_rating", "ret_3m", "ret_12m", "rs_new_high")
 
 
-def load_companies(conn: psycopg.Connection) -> set[str]:
+def load_companies(conn: psycopg.Connection[Row]) -> set[str]:
     resp = httpx.get(CONSTITUENTS_URL, timeout=30, follow_redirects=True)
     resp.raise_for_status()
     rows = [
@@ -54,7 +54,7 @@ def pending_days(today: date, days: int, done: set[str]) -> list[str]:
     return [d for d in weekdays(today - timedelta(days=days), today - timedelta(days=1)) if d not in done]
 
 
-def fetch_prices(conn: psycopg.Connection, client: MassiveClient, tickers: set[str], days: int) -> None:
+def fetch_prices(conn: psycopg.Connection[Row], client: MassiveClient, tickers: set[str], days: int) -> None:
     today = date.today()
     done = {r["date"] for r in conn.execute("SELECT date FROM fetched_dates")}
     todo = pending_days(today, days, done)
@@ -87,8 +87,8 @@ def fetch_prices(conn: psycopg.Connection, client: MassiveClient, tickers: set[s
         print(f"  [{n}/{len(todo)}] {day}: {label}")
 
 
-def history_window(conn: psycopg.Connection) -> tuple[str, str] | None:
-    first = conn.execute("SELECT MIN(date) FROM fetched_dates WHERE rows > 0").fetchone()[0]
+def history_window(conn: psycopg.Connection[Row]) -> tuple[str, str] | None:
+    first = one(conn.execute("SELECT MIN(date) FROM fetched_dates WHERE rows > 0"))[0]
     if not first:
         return None
     return first, (date.today() - timedelta(days=1)).isoformat()
@@ -114,7 +114,7 @@ def symbol_periods(
     return periods
 
 
-def refetch_history(conn: psycopg.Connection, client: MassiveClient, ticker: str) -> str:
+def refetch_history(conn: psycopg.Connection[Row], client: MassiveClient, ticker: str) -> str:
     """Replace a company's bars with its full history, stitched across any old symbols.
 
     Also drops bars that belonged to a different security that used the symbol earlier
@@ -124,7 +124,7 @@ def refetch_history(conn: psycopg.Connection, client: MassiveClient, ticker: str
     if window is None:
         return "no data yet"
     lo, hi = window
-    first_bar = conn.execute("SELECT MIN(date) FROM daily_bars WHERE ticker = %s", (ticker,)).fetchone()[0]
+    first_bar = one(conn.execute("SELECT MIN(date) FROM daily_bars WHERE ticker = %s", (ticker,)))[0]
     rows, used = [], []
     for symbol, start, end in symbol_periods(client, ticker, first_bar):
         a, b = max(start, lo), min(end or hi, hi)
@@ -139,9 +139,9 @@ def refetch_history(conn: psycopg.Connection, client: MassiveClient, ticker: str
     return f"{len(rows)} bars ({', '.join(used) or 'none'})"
 
 
-def fix_renames(conn: psycopg.Connection, client: MassiveClient, tickers: set[str]) -> None:
+def fix_renames(conn: psycopg.Connection[Row], client: MassiveClient, tickers: set[str]) -> None:
     """Rebuild history for tickers that look renamed: short history or an impossible jump."""
-    spy_days = conn.execute("SELECT COUNT(*) FROM daily_bars WHERE ticker = %s", (BENCHMARK,)).fetchone()[0]
+    spy_days = one(conn.execute("SELECT COUNT(*) FROM daily_bars WHERE ticker = %s", (BENCHMARK,)))[0]
     counts = {
         r["ticker"]: r["n"]
         for r in conn.execute("SELECT ticker, COUNT(*) AS n FROM daily_bars GROUP BY ticker")
@@ -171,7 +171,7 @@ def fix_renames(conn: psycopg.Connection, client: MassiveClient, tickers: set[st
     print(f"Renames: checked {len(candidates)} tickers with short or broken history")
 
 
-def apply_splits(conn: psycopg.Connection, client: MassiveClient, tickers: set[str]) -> None:
+def apply_splits(conn: psycopg.Connection[Row], client: MassiveClient, tickers: set[str]) -> None:
     """Refetch a ticker's history when a split happened after some of its bars were fetched.
 
     Bars are split-adjusted as of the day they were fetched, so only bars fetched on or
@@ -202,7 +202,7 @@ def apply_splits(conn: psycopg.Connection, client: MassiveClient, tickers: set[s
     print(f"Splits: {len(splits)} new for S&P tickers, {refetched} refetched")
 
 
-def compute_rs(conn: psycopg.Connection) -> None:
+def compute_rs(conn: psycopg.Connection[Row]) -> None:
     bench_rows = conn.execute(
         "SELECT date, close FROM daily_bars WHERE ticker = %s ORDER BY date", (BENCHMARK,)
     ).fetchall()
@@ -233,12 +233,12 @@ def compute_rs(conn: psycopg.Connection) -> None:
         print(f"  (needs {rs.MIN_BARS} trading days of {BENCHMARK}; have {len(dates)})")
 
 
-def print_summary(conn: psycopg.Connection) -> None:
-    first, last, days = conn.execute(
-        "SELECT MIN(date), MAX(date), COUNT(*) FROM daily_bars WHERE ticker = %s", (BENCHMARK,)
-    ).fetchone()
-    tickers = conn.execute("SELECT COUNT(DISTINCT ticker) FROM daily_bars").fetchone()[0]
-    rated = conn.execute("SELECT MAX(date) FROM rs_ratings").fetchone()[0]
+def print_summary(conn: psycopg.Connection[Row]) -> None:
+    first, last, days = one(
+        conn.execute("SELECT MIN(date), MAX(date), COUNT(*) FROM daily_bars WHERE ticker = %s", (BENCHMARK,))
+    )
+    tickers = one(conn.execute("SELECT COUNT(DISTINCT ticker) FROM daily_bars"))[0]
+    rated = one(conn.execute("SELECT MAX(date) FROM rs_ratings"))[0]
     print(f"\nSummary: {first} → {last}, {days} trading days, {tickers} tickers, latest rating {rated}")
 
 

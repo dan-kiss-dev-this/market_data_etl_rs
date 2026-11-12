@@ -6,6 +6,7 @@ from collections.abc import Sequence
 import psycopg
 
 from app.config import BENCHMARK
+from app.db import Row
 
 SHORT, LONG = 50, 200  # trading days
 SLOPE_LOOKBACK = 10  # the 50-day average is rising if it's above its value this many days ago
@@ -62,7 +63,7 @@ def breadth(closes_by_ticker: dict[str, Sequence[float]]) -> float | None:
     return above / counted if counted else None
 
 
-def market_direction(conn: psycopg.Connection, date: str) -> dict | None:
+def market_direction(conn: psycopg.Connection[Row], date: str) -> dict | None:
     """Market direction as of date, from daily_bars; None if the benchmark has under 200 bars."""
     bench = conn.execute(
         "SELECT date, close FROM daily_bars WHERE ticker = %s AND date <= %s ORDER BY date DESC LIMIT %s",

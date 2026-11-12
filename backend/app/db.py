@@ -1,6 +1,7 @@
 from functools import cache
 
 import psycopg
+from psycopg.rows import RowMaker
 from psycopg_pool import ConnectionPool
 
 from app.config import DATABASE_URL
@@ -71,6 +72,8 @@ CREATE TABLE IF NOT EXISTS blurbs (
 class Row(tuple):
     """A result row readable by position or column name, like a tuple or a dict."""
 
+    _index: dict[str, int]
+
     def __new__(cls, names: list[str], values):
         row = super().__new__(cls, values)
         row._index = {n: i for i, n in enumerate(names)}
@@ -85,7 +88,7 @@ class Row(tuple):
         return list(self._index)
 
 
-def row_factory(cursor: psycopg.Cursor):
+def row_factory(cursor: psycopg.Cursor) -> RowMaker[Row]:
     names = [c.name for c in cursor.description or []]
     return lambda values: Row(names, values)
 
@@ -96,16 +99,25 @@ def row_factory(cursor: psycopg.Cursor):
 CONNECT_KWARGS = {"row_factory": row_factory, "autocommit": True, "prepare_threshold": None}
 
 
-def connect() -> psycopg.Connection:
-    return psycopg.connect(DATABASE_URL, **CONNECT_KWARGS)
+def connect() -> psycopg.Connection[Row]:
+    # Connection[Row].connect rather than psycopg.connect, which type checkers read as yielding tuples
+    return psycopg.Connection[Row].connect(DATABASE_URL, **CONNECT_KWARGS)
 
 
-def init_schema(conn: psycopg.Connection) -> None:
+def one(cursor: psycopg.Cursor[Row]) -> Row:
+    """The row of a query that always returns exactly one, such as SELECT MAX(...)."""
+    row = cursor.fetchone()
+    if row is None:
+        raise LookupError("expected one row, got none")
+    return row
+
+
+def init_schema(conn: psycopg.Connection[Row]) -> None:
     with conn.transaction():
         conn.execute(SCHEMA)
 
 
 @cache
-def pool() -> ConnectionPool:
+def pool() -> ConnectionPool[psycopg.Connection[Row]]:
     """Shared connections for the API, so each request doesn't open a new one."""
     return ConnectionPool(DATABASE_URL, kwargs=CONNECT_KWARGS, min_size=1, max_size=5, open=True)

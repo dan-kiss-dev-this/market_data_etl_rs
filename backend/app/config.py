@@ -4,9 +4,10 @@ from pathlib import Path
 from dotenv import load_dotenv
 
 BACKEND_DIR = Path(__file__).resolve().parent.parent
+# Doesn't override variables already set, so `uv run --env-file .env.production ...` wins
 load_dotenv(BACKEND_DIR / ".env")
 
-# Local Postgres.app by default; point it at another database (e.g. Supabase) to switch
+# Local Postgres.app (dev) by default; .env.production points it at Supabase (production)
 DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://postgres@localhost:5432/market")
 
 # Massive is the rebranded Polygon.io; api.polygon.io is the legacy host

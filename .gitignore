@@ -6,3 +6,5 @@ dist/
 .DS_Store
 backend/data/backups/
 backend/data/*.log
+.env.*
+!.env.example

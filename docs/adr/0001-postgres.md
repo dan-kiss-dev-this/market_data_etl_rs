@@ -18,3 +18,4 @@ Every table (companies, daily_bars, rs_ratings and the ETL bookkeeping tables) l
 - Moving to Supabase is a data copy plus a `DATABASE_URL` change; no code changes.
 - SQLite is no longer supported by the app.
 - 2026-11-05: moved to Supabase (Postgres 17, us-east-2) by restoring a `pg_dump` of the local database; `DATABASE_URL` in `backend/.env` now points at it. Use the **session pooler** host (`aws-0-us-east-2.pooler.supabase.com`); the direct `db.<ref>.supabase.co` host is IPv6-only and doesn't resolve on IPv4 networks. Deleting `DATABASE_URL` from `.env` switches back to local Postgres.app.
+- 2026-11-12: local Postgres is the dev database again and the default everywhere. The Supabase URL moved to a gitignored `backend/.env.production` and is used only with `uv run --env-file .env.production …`. `uv run python -m app.pull_prod` brings dev up to date with production (read-only on Supabase).

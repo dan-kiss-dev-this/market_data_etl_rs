@@ -1,4 +1,4 @@
-# Market Data ETL and RS with FastAPI + React starter
+# Market Data ETL and RS with FastAPI + React
 
 ## Running it
 
@@ -41,6 +41,8 @@ The ETL pulls daily S&P 500 prices from [Massive](https://massive.com) (formerly
 
 The AI Researcher panel shows a **Blurb** for each Leader (the 50 highest-rated companies): why it's leading, written by Claude Haiku from the company's description, RS data, the last 30 days of Massive news and the Market direction. You run it by hand, about weekly. A full run costs about $0.03 in API fees and takes about 10 minutes because of Massive's rate limit. See `.scratch/ai-researcher/spec.md`.
 
+The news comes only from the Blurb run. It fetches the Leader's last 30 days of Massive news, and Haiku picks up to 3 headlines that support the Catalyst, by number. The run saves those real headlines with the Blurb, and the panel lists them under Sources, linking to the articles. Haiku can't add a headline or a link of its own. Chat with AI answers from these saved headlines and makes no news call of its own, so its news is only as fresh as the latest Blurb run.
+
 1. Add an Anthropic API key to `backend/.env`:
    ```
    ANTHROPIC_API_KEY=your-key
@@ -54,6 +56,14 @@ The AI Researcher panel shows a **Blurb** for each Leader (the 50 highest-rated 
    Rerunning on the same rated date replaces that date's Blurbs. A Leader that fails is skipped and listed at the end. The run only exits with an error if more than 10 fail. The panel shows a Blurb for 7 days after its rated date.
 
 **Don't start a Blurb run while the Daily refresh may be running: 07:00–07:45 or 13:00–13:45 UTC, Tuesday to Saturday.** Both use the same Massive key, which allows 5 calls a minute in total, so running them together slows both down and can push the refresh past its 30-minute timeout. The Blurb run refuses to start in those windows. Pass `--force` if you know the refresh has already finished.
+
+## Chat with AI
+
+The AI Researcher panel lets a visitor ask follow-up questions about a Leader. Claude Haiku answers only from stored data: the Leader's Blurb and the headlines it cites, RS data, company description and Market direction. It runs no web search and makes no Massive call per message, and replies stream in. See `.scratch/chat-with-ai/spec.md`.
+- **Only for Leaders:** chat works only for companies with a current Blurb. Other companies show a disabled input.
+- **Limits** (in `backend/app/config.py`): each visitor gets 5 messages per UTC day, of up to 250 characters each, and the whole site gets 100 a day. Visitors are anonymous and are identified by a hash of the day and their IP. No IP is stored.
+- **Cost:** about $0.001 a message, so the site cap holds spending to about $0.11 a day. As a backstop, set a monthly spend limit in the Anthropic Console.
+- **Setup:** chat uses the same `ANTHROPIC_API_KEY` as the Blurb run, plus a `chat_usage` table that the ETL creates. Without the key or the table, the endpoint returns 503 and the panel shows chat as unavailable. On Render, enter the key in the dashboard (`render.yaml` declares it with `sync: false`).
 
 ## Dev and production
 
@@ -85,6 +95,7 @@ Then it rebuilds RS ratings locally. Chat message counts aren't copied. It takes
 - The 13:00 UTC run retries in case Massive published late. When there's nothing new it finishes in seconds.
 - A market holiday shows as "no data yet" for up to three days and is then recorded as closed. That isn't a failure.
 - It reads two repository secrets, `DATABASE_URL` and `MASSIVE_API_KEY`. Set or replace them with `gh secret set <NAME>`, which prompts for the value.
+- **`DATABASE_URL` must be Supabase's Session pooler URL** (`…@aws-0-<region>.pooler.supabase.com:5432/postgres`), not the direct-connection host `db.<ref>.supabase.co`. The direct host only has an IPv6 address, and GitHub runners have no IPv6, so the run fails with `Network is unreachable`. A local run can still work because your machine may have IPv6. Use the pooler URL in Render and `backend/.env.production` too.
 - If a run fails, GitHub emails the repo owner. There's no other alerting.
 - There's no manual trigger. To refresh on demand, run the ETL locally against production: `uv run --env-file .env.production python -m app.etl`.
 - **GitHub turns off scheduled workflows after 60 days with no commits to the repo.** To turn it back on, open the repo's Actions tab, pick "Daily refresh" and click "Enable workflow", or run `gh workflow enable daily-refresh.yml`.

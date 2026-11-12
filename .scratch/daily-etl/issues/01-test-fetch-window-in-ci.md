@@ -14,5 +14,5 @@ See the spec: `.scratch/daily-etl/spec.md` (Testing Decisions).
 - [x] Test: already-fetched dates are skipped, and a fully fetched window returns nothing
 - [x] Test: the window start respects the days parameter
 - [x] `uv run pytest` passes locally (existing RS tests and the new tests)
-- [ ] The CI workflow runs on push and pull request, uses the frozen lockfile with dev dependencies, and goes green on GitHub
+- [x] The CI workflow runs on push and pull request, uses the frozen lockfile with dev dependencies, and goes green on GitHub
 - [x] The README's tests note says the tests also run in CI

@@ -1,9 +1,11 @@
 from contextlib import asynccontextmanager
+from datetime import date, timedelta
 
+import psycopg
 from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
 
-from app.config import BACKEND_DIR, BENCHMARK
+from app.config import BACKEND_DIR, BENCHMARK, BLURB_MAX_AGE_DAYS, LEADER_COUNT
 from app.db import pool
 
 
@@ -47,7 +49,7 @@ def rs_sectors():
     return [r["sector"] for r in rows]
 
 @app.get("/api/rs/leaders")
-def rs_leaders(limit: int = 50, sector: str | None = None):
+def rs_leaders(limit: int = LEADER_COUNT, sector: str | None = None):
     with pool().connection() as conn:
         latest = conn.execute("SELECT MAX(date) FROM rs_ratings").fetchone()[0]
         if latest is None:
@@ -71,6 +73,30 @@ def rs_leaders(limit: int = 50, sector: str | None = None):
             {"latest": latest, "prev": prev[0] if prev else None, "sector": sector, "limit": limit},
         ).fetchall()
     return [{**dict(r), "rs_new_high": bool(r["rs_new_high"])} for r in rows]
+
+def is_current(blurb_date: str, today: date) -> bool:
+    return date.fromisoformat(blurb_date) >= today - timedelta(days=BLURB_MAX_AGE_DAYS)
+
+@app.get("/api/rs/{ticker}/blurb")
+def rs_blurb(ticker: str):
+    ticker = ticker.upper()
+    try:
+        with pool().connection() as conn:
+            row = conn.execute(
+                """SELECT b.ticker, b.date, b.blurb, b.headlines, m.data AS market
+                   FROM blurbs b
+                   LEFT JOIN market_directions m USING (date)
+                   WHERE b.ticker = %s
+                   ORDER BY b.date DESC
+                   LIMIT 1""",
+                (ticker,),
+            ).fetchone()
+    # The Blurb run creates the tables, so a database it hasn't run against has none yet
+    except psycopg.errors.UndefinedTable:
+        row = None
+    if row is None or not is_current(row["date"], date.today()):
+        raise HTTPException(404, f"No current Blurb for {ticker}")
+    return dict(row)
 
 @app.get("/api/rs/{ticker}")
 def rs_ticker(ticker: str):

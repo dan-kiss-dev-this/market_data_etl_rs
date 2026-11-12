@@ -13,3 +13,7 @@ export const leadersQuery = (sector: string | null) =>
 
 export const tickerQuery = (ticker: string) =>
   queryOptions({ queryKey: ['ticker', ticker], queryFn: () => api.ticker(ticker), staleTime })
+
+// No retries: a failed lookup should fall back to a message quickly, not spin
+export const blurbQuery = (ticker: string) =>
+  queryOptions({ queryKey: ['blurb', ticker], queryFn: () => api.blurb(ticker), staleTime, retry: false })

@@ -37,6 +37,24 @@ The ETL pulls daily S&P 500 prices from [Massive](https://massive.com) (formerly
    The free tier allows 5 calls a minute, and each trading day takes one call. Every day is saved as soon as it arrives, so you can stop the run at any point and rerunning resumes it. Massive's free tier only serves a trading day after that day has ended, so rerun it after midnight ET to add the new day; the run fetches up to yesterday by your machine's date.
 3. Run the tests from `backend/` with `uv run pytest`. They also run in CI on every push and pull request (`.github/workflows/test.yml`); they need no secrets or database.
 
+## Blurb run (AI Researcher)
+
+The AI Researcher panel shows a **Blurb** for each Leader (the 50 highest-rated companies): why it's leading, written by Claude Haiku from the company's description, RS data, the last 30 days of Massive news and the Market direction. You run it by hand, about weekly. A full run costs about $0.03 in API fees and takes about 10 minutes because of Massive's rate limit. See `.scratch/ai-researcher/spec.md`.
+
+1. Add an Anthropic API key to `backend/.env`:
+   ```
+   ANTHROPIC_API_KEY=your-key
+   ```
+2. Run it from `backend/`. It writes to whatever `DATABASE_URL` is set:
+   ```bash
+   uv run python -m app.blurbs --limit 3                               # try a few Leaders
+   uv run python -m app.blurbs --ticker NVDA                           # one Leader
+   DATABASE_URL='<supabase session-pooler url>' uv run python -m app.blurbs   # publish to the live site
+   ```
+   Rerunning on the same rated date replaces that date's Blurbs. A Leader that fails is skipped and listed at the end. The run only exits with an error if more than 10 fail. The panel shows a Blurb for 7 days after its rated date.
+
+**Don't start a Blurb run while the Daily refresh may be running: 07:00–07:45 or 13:00–13:45 UTC, Tuesday to Saturday.** Both use the same Massive key, which allows 5 calls a minute in total, so running them together slows both down and can push the refresh past its 30-minute timeout. The Blurb run refuses to start in those windows. Pass `--force` if you know the refresh has already finished.
+
 ## Deployment
 
 **Site:** one Render web service (`render.yaml`) builds `deploy/Dockerfile` and serves the API and the built frontend. It redeploys on every push to `main`. Its `DATABASE_URL`, the Supabase session-pooler URL, is entered in the Render dashboard and never committed.

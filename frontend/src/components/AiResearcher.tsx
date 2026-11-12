@@ -1,6 +1,23 @@
+import { useQuery } from '@tanstack/react-query'
 import { useId, useState } from 'react'
+import type { BlurbFields, MarketDirection } from '../api'
+import { blurbQuery } from '../queries'
 
 type Props = { ticker: string; name: string }
+
+const FIELDS: [keyof BlurbFields, string][] = [
+  ['what_they_sell', 'What they sell'],
+  ['catalyst', 'Catalyst'],
+  ['category_position', 'Category position'],
+  ['momentum', 'Momentum'],
+  ['risks', 'Risks'],
+]
+
+const MARKET_CLASS: Record<MarketDirection['status'], string> = {
+  Uptrend: 'market-up',
+  'Under pressure': 'market-pressure',
+  Downtrend: 'market-down',
+}
 
 function ChatIcon() {
   return (
@@ -13,10 +30,25 @@ function ChatIcon() {
   )
 }
 
-// Placeholder until a research service exists: a chat window that names the company and says so
+function MarketBadge({ market }: { market: MarketDirection }) {
+  return (
+    <p className={`market-badge ${MARKET_CLASS[market.status]}`}>
+      S&amp;P 500: {market.status}
+      {market.breadth !== null && (
+        <span title="Share of S&P 500 companies above their own 50-day average">
+          {' '}
+          · Breadth {Math.round(market.breadth * 100)}%
+        </span>
+      )}
+    </p>
+  )
+}
+
+// Shows the selected company's latest Blurb, written by the weekly Blurb run; only Leaders have one
 export default function AiResearcher({ ticker, name }: Props) {
   const [open, setOpen] = useState(false)
   const panelId = useId()
+  const { data, isPending, isError } = useQuery({ ...blurbQuery(ticker), enabled: open })
 
   return (
     <div className="ai-researcher">
@@ -30,7 +62,7 @@ export default function AiResearcher({ ticker, name }: Props) {
             <span className="chat-avatar" aria-hidden="true">AI</span>
             <span>
               <strong>AI Researcher</strong>
-              <span className="chat-presence">Offline</span>
+              <span className="chat-presence">{data ? 'Online' : 'Offline'}</span>
             </span>
             <button type="button" className="chat-close" aria-label="Close AI Researcher" onClick={() => setOpen(false)}>
               <svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true">
@@ -42,7 +74,35 @@ export default function AiResearcher({ ticker, name }: Props) {
             <p className="chat-bubble">
               You've selected <strong>{name}</strong> ({ticker}) to research.
             </p>
-            <p className="chat-bubble">Service Not Available</p>
+            {isPending && <p className="chat-bubble">Looking up {name}…</p>}
+            {isError && <p className="chat-bubble">Couldn't load the Blurb right now. Try again later.</p>}
+            {data === null && <p className="chat-bubble">No current Blurb. Blurbs cover the top 50 by RS rating.</p>}
+            {data && (
+              <>
+                {data.market && <MarketBadge market={data.market} />}
+                {FIELDS.map(([key, label]) => (
+                  <p key={key} className="chat-bubble">
+                    <strong className="blurb-label">{label}</strong>
+                    {data.blurb[key]}
+                  </p>
+                ))}
+                <p className="blurb-meta">Updated {data.date}</p>
+                {data.headlines.length > 0 && (
+                  <ul className="blurb-sources" aria-label="Sources">
+                    {data.headlines.map((h) => (
+                      <li key={h.url}>
+                        <a href={h.url} target="_blank" rel="noreferrer">
+                          {h.title}
+                        </a>{' '}
+                        <span>
+                          {h.publisher}, {h.date}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                )}
+              </>
+            )}
           </div>
           <input className="chat-input" type="text" placeholder="Message AI Researcher…" aria-label="Message" disabled />
         </div>

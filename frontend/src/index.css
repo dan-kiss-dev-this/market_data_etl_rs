@@ -554,6 +554,50 @@ select,
   gap: 6px;
   padding: 14px;
   background: var(--page);
+  /* A full Blurb is taller than a phone screen; scroll inside the panel instead */
+  max-height: min(60vh, 520px);
+  overflow-y: auto;
+}
+.market-badge {
+  margin: 0;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 600;
+  border: 1px solid currentColor;
+}
+.market-up {
+  color: var(--delta-up);
+}
+.market-pressure {
+  color: var(--bolt);
+}
+.market-down {
+  color: var(--delta-down);
+}
+.blurb-label {
+  display: block;
+  font-size: 12px;
+  color: var(--text-secondary);
+}
+.blurb-meta {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--text-muted);
+}
+.blurb-sources {
+  margin: 0;
+  padding-left: 18px;
+  font-size: 13px;
+}
+.blurb-sources li + li {
+  margin-top: 4px;
+}
+.blurb-sources a {
+  color: var(--accent);
+}
+.blurb-sources span {
+  color: var(--text-muted);
 }
 .chat-bubble {
   max-width: 85%;

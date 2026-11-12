@@ -45,6 +45,26 @@ CREATE TABLE IF NOT EXISTS rs_ratings (
     PRIMARY KEY (date, ticker)
 );
 CREATE INDEX IF NOT EXISTS idx_rs_ratings_ticker ON rs_ratings (ticker, date);
+-- Massive's company descriptions; kept apart from companies, which the ETL rebuilds each run
+CREATE TABLE IF NOT EXISTS company_profiles (
+    ticker      TEXT PRIMARY KEY,
+    description TEXT NOT NULL,
+    fetched_at  TEXT NOT NULL
+);
+CREATE TABLE IF NOT EXISTS market_directions (
+    date TEXT PRIMARY KEY,
+    data JSONB NOT NULL
+);
+-- One Blurb per Leader per rated date; headlines holds only the ones the Catalyst cites
+CREATE TABLE IF NOT EXISTS blurbs (
+    ticker     TEXT NOT NULL,
+    date       TEXT NOT NULL,
+    blurb      JSONB NOT NULL,
+    headlines  JSONB NOT NULL,
+    model      TEXT NOT NULL,
+    created_at TEXT NOT NULL,
+    PRIMARY KEY (ticker, date)
+);
 """
 
 

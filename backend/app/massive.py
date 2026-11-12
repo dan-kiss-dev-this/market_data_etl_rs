@@ -7,6 +7,9 @@ from app.config import MASSIVE_API_KEY, MASSIVE_BASE_URL
 
 # Free tier allows 5 calls per minute
 MIN_SECONDS_BETWEEN_CALLS = 12.5
+# One news call fetches this many articles, which ticker_news filters down
+NEWS_FETCH_LIMIT = 50
+MAX_TICKERS_PER_ARTICLE = 5
 
 
 def bar_date(bar: dict) -> str:
@@ -64,6 +67,54 @@ class MassiveClient:
             raise
         events = (data.get("results") or {}).get("events") or []
         return sorted((e["date"], e["ticker_change"]["ticker"]) for e in events)
+
+    def ticker_details(self, ticker: str) -> dict:
+        """Massive's reference data for a ticker, including its company description."""
+        try:
+            data = self._get(f"/v3/reference/tickers/{ticker}")
+        except httpx.HTTPStatusError as e:
+            if e.response.status_code == 404:
+                return {}
+            raise
+        return data.get("results") or {}
+
+    def ticker_news(self, ticker: str, since: str, until: str, limit: int = 10) -> list[dict]:
+        """Up to `limit` articles about ticker published from since to until (dates), oldest first.
+        Massive tags an article with every ticker it mentions, so keep only articles with an
+        insight about this ticker that mention a few tickers at most, preferring the most focused."""
+        data = self._get(
+            "/v2/reference/news",
+            {
+                "ticker": ticker,
+                "published_utc.gte": since,
+                "published_utc.lte": f"{until}T23:59:59Z",
+                "sort": "published_utc",
+                "order": "desc",
+                "limit": NEWS_FETCH_LIMIT,
+            },
+        )
+        focused = []
+        for article in data.get("results") or []:
+            insight = next((i for i in article.get("insights") or [] if i.get("ticker") == ticker), None)
+            mentions = len(article.get("tickers") or [])
+            if insight is None or mentions > MAX_TICKERS_PER_ARTICLE:
+                continue
+            focused.append(
+                (
+                    mentions,
+                    {
+                        "date": article["published_utc"][:10],
+                        "title": article["title"],
+                        "publisher": (article.get("publisher") or {}).get("name", ""),
+                        "url": article["article_url"],
+                        "sentiment": insight.get("sentiment", ""),
+                        "insight": insight.get("sentiment_reasoning", ""),
+                    },
+                )
+            )
+        # Stable sort keeps newest first among articles equally focused
+        focused.sort(key=lambda m: m[0])
+        return sorted((a for _, a in focused[:limit]), key=lambda a: a["date"])
 
     def splits(self, since: str, until: str | None = None) -> list[dict]:
         """Splits executed between since and until (default today); follows pagination."""

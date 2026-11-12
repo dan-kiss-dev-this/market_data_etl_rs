@@ -34,6 +34,35 @@ export type TickerDetail = {
   series: Point[]
 }
 
+export type MarketDirection = {
+  status: 'Uptrend' | 'Under pressure' | 'Downtrend'
+  // Share (0-1) of S&P 500 companies above their own 50-day average
+  breadth: number | null
+}
+
+export type Headline = {
+  date: string
+  title: string
+  publisher: string
+  url: string
+}
+
+export type BlurbFields = {
+  what_they_sell: string
+  catalyst: string
+  category_position: string
+  momentum: string
+  risks: string
+}
+
+export type Blurb = {
+  ticker: string
+  date: string
+  blurb: BlurbFields
+  headlines: Headline[]
+  market: MarketDirection | null
+}
+
 async function getJson<T>(url: string): Promise<T> {
   const res = await fetch(url)
   if (!res.ok) throw new Error(`${res.status} ${res.statusText} (${url})`)
@@ -49,6 +78,14 @@ export const api = {
     return getJson<Leader[]>(`/api/rs/leaders?${params}`)
   },
   ticker: (ticker: string) => getJson<TickerDetail>(`/api/rs/${encodeURIComponent(ticker)}`),
+  // null when the company has no current Blurb (only Leaders get one)
+  blurb: async (ticker: string): Promise<Blurb | null> => {
+    const url = `/api/rs/${encodeURIComponent(ticker)}/blurb`
+    const res = await fetch(url)
+    if (res.status === 404) return null
+    if (!res.ok) throw new Error(`${res.status} ${res.statusText} (${url})`)
+    return res.json()
+  },
 }
 
 // IBD needs 252 prior trading days before the first rating

@@ -16,10 +16,10 @@ See the spec: `.scratch/daily-etl/spec.md`.
 
 **Status:** ready-for-agent
 
-- [ ] The workflow has only the two crons, with no `workflow_dispatch` trigger
-- [ ] actionlint reports no problems with the workflow
-- [ ] The workflow's ETL command, run locally against Supabase, succeeds and prints the Summary line
+- [x] The workflow has only the two crons, with no `workflow_dispatch` trigger
+- [x] actionlint reports no problems with the workflow
+- [x] The workflow's ETL command, run locally against Supabase, succeeds and prints the Summary line
 - [ ] After pushing (with the owner's OK), the first scheduled run succeeds and its log shows "Summary: … latest rating <previous trading day>"
 - [ ] `/api/rs/status` on the Render site shows `rated_date` equal to the previous trading day
-- [ ] The README has the Deployment section and the corrected availability line
-- [ ] `docs/todo-ideas.md` records the manual-button idea
+- [x] The README has the Deployment section and the corrected availability line
+- [x] `docs/todo-ideas.md` records the manual-button idea

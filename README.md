@@ -34,8 +34,23 @@ The ETL pulls daily S&P 500 prices from [Massive](https://massive.com) (formerly
    uv run python -m app.etl            # later runs: only the missing days, a few seconds each
    uv run python -m app.etl --rs-only  # recompute ratings without calling the API
    ```
-   The free tier allows 5 calls a minute, and each trading day takes one call. Every day is saved as soon as it arrives, so you can stop the run at any point and rerunning resumes it. Rerun it after the market closes to add the new day.
+   The free tier allows 5 calls a minute, and each trading day takes one call. Every day is saved as soon as it arrives, so you can stop the run at any point and rerunning resumes it. Massive's free tier only serves a trading day after that day has ended, so rerun it after midnight ET to add the new day; the run fetches up to yesterday by your machine's date.
 3. Run the tests from `backend/` with `uv run pytest`. They also run in CI on every push and pull request (`.github/workflows/test.yml`); they need no secrets or database.
+
+## Deployment
+
+**Site:** one Render web service (`render.yaml`) builds `deploy/Dockerfile` and serves the API and the built frontend. It redeploys on every push to `main`. Its `DATABASE_URL`, the Supabase session-pooler URL, is entered in the Render dashboard and never committed.
+
+**Daily refresh:** `.github/workflows/daily-refresh.yml` runs the ETL against the same Supabase database at 07:00 UTC and 13:00 UTC, Tuesday to Saturday. The site picks up new ratings straight away, with no redeploy. By US morning it shows the previous trading day.
+- It runs overnight, not at the close, because Massive's free tier only serves a trading day after it has ended, and the ETL fetches up to yesterday by the runner's UTC date. A run at the close would always be a day behind. 07:00 UTC is 2 am EST / 3 am EDT.
+- The 13:00 UTC run retries in case Massive published late. When there's nothing new it finishes in seconds.
+- A market holiday shows as "no data yet" for up to three days and is then recorded as closed. That isn't a failure.
+- It reads two repository secrets, `DATABASE_URL` and `MASSIVE_API_KEY`. Set or replace them with `gh secret set <NAME>`, which prompts for the value.
+- If a run fails, GitHub emails the repo owner. There's no other alerting.
+- There's no manual trigger. To refresh on demand, run the ETL locally (above); your `backend/.env` can point at the same Supabase URL.
+- **GitHub turns off scheduled workflows after 60 days with no commits to the repo.** To turn it back on, open the repo's Actions tab, pick "Daily refresh" and click "Enable workflow", or run `gh workflow enable daily-refresh.yml`.
+
+**CI:** `.github/workflows/test.yml` runs pytest, Vitest and actionlint on every push and pull request. It needs no secrets.
 
 ## Adding dependencies
 

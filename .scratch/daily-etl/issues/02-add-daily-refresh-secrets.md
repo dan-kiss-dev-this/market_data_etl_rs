@@ -10,5 +10,5 @@ The owner enters the values. An agent must not read, print or copy `backend/.env
 
 **Status:** ready-for-human
 
-- [ ] `gh secret list` shows `DATABASE_URL` and `MASSIVE_API_KEY`
-- [ ] No secret values appear in the repo, commits or chat
+- [x] `gh secret list` shows `DATABASE_URL` and `MASSIVE_API_KEY`
+- [x] No secret values appear in the repo, commits or chat

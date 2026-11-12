@@ -195,7 +195,7 @@ def test_ticker_news_keeps_focused_articles_about_the_ticker_oldest_first():
 
 
 def test_blurb_is_current_for_7_days_after_its_rated_date():
-    from app.main import is_current
+    from app.blurbs import is_current
 
     assert is_current("2026-11-05", TODAY)
     assert not is_current("2026-11-04", TODAY)

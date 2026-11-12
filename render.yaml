@@ -1,5 +1,5 @@
 # Render Blueprint: one web service for the API and the built frontend.
-# DATABASE_URL is entered in the Render dashboard (sync: false), never committed.
+# DATABASE_URL and ANTHROPIC_API_KEY are entered in the Render dashboard (sync: false), never committed.
 services:
   - type: web
     name: market-rs
@@ -13,4 +13,7 @@ services:
     autoDeployTrigger: commit
     envVars:
       - key: DATABASE_URL
+        sync: false
+      # Powers ChatWithAI in the AI Researcher panel; without it chat shows as unavailable
+      - key: ANTHROPIC_API_KEY
         sync: false

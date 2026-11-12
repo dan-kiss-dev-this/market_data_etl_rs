@@ -39,3 +39,7 @@ _Avoid_: Driver, trigger
 **Market direction**:
 The state of the S&P 500 trend: Uptrend, Under pressure or Downtrend.
 _Avoid_: Market trend, regime, market status
+
+**Chat allowance**:
+The messages a visitor can still send the AI Researcher today: 5 per visitor per UTC day, within a site-wide cap of 100. Only Leaders can be chatted about.
+_Avoid_: Quota, credits

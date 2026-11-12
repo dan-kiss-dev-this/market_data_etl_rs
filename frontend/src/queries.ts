@@ -17,3 +17,6 @@ export const tickerQuery = (ticker: string) =>
 // No retries: a failed lookup should fall back to a message quickly, not spin
 export const blurbQuery = (ticker: string) =>
   queryOptions({ queryKey: ['blurb', ticker], queryFn: () => api.blurb(ticker), staleTime, retry: false })
+
+// Refetched after each message; no retries so a missing chat setup shows quickly
+export const chatAllowanceQuery = queryOptions({ queryKey: ['chatAllowance'], queryFn: () => api.chatAllowance(), retry: false })

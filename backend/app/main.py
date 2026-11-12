@@ -1,11 +1,17 @@
 from contextlib import asynccontextmanager
-from datetime import date, timedelta
+from datetime import UTC, date, datetime
+from itertools import chain
 
+import anthropic
 import psycopg
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
+from fastapi.responses import StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
-from app.config import BACKEND_DIR, BENCHMARK, BLURB_MAX_AGE_DAYS, LEADER_COUNT
+from app import chat_with_ai
+from app.blurbs import current_blurb
+from app.chat_with_ai import Conversation, LimitReached
+from app.config import ANTHROPIC_API_KEY, BACKEND_DIR, BENCHMARK, CHAT_VISITOR_DAILY, LEADER_COUNT
 from app.db import pool
 
 
@@ -74,29 +80,69 @@ def rs_leaders(limit: int = LEADER_COUNT, sector: str | None = None):
         ).fetchall()
     return [{**dict(r), "rs_new_high": bool(r["rs_new_high"])} for r in rows]
 
-def is_current(blurb_date: str, today: date) -> bool:
-    return date.fromisoformat(blurb_date) >= today - timedelta(days=BLURB_MAX_AGE_DAYS)
-
 @app.get("/api/rs/{ticker}/blurb")
 def rs_blurb(ticker: str):
     ticker = ticker.upper()
     try:
         with pool().connection() as conn:
-            row = conn.execute(
-                """SELECT b.ticker, b.date, b.blurb, b.headlines, m.data AS market
-                   FROM blurbs b
-                   LEFT JOIN market_directions m USING (date)
-                   WHERE b.ticker = %s
-                   ORDER BY b.date DESC
-                   LIMIT 1""",
-                (ticker,),
-            ).fetchone()
+            blurb = current_blurb(conn, ticker, date.today())
     # The Blurb run creates the tables, so a database it hasn't run against has none yet
     except psycopg.errors.UndefinedTable:
-        row = None
-    if row is None or not is_current(row["date"], date.today()):
+        blurb = None
+    if blurb is None:
         raise HTTPException(404, f"No current Blurb for {ticker}")
-    return dict(row)
+    return blurb
+
+def chat_day() -> date:
+    return datetime.now(UTC).date()
+
+# The Daily refresh creates chat_usage, so a database it hasn't run against since can't chat yet
+CHAT_UNAVAILABLE = HTTPException(503, "Chat isn't available right now")
+
+@app.get("/api/chat/allowance")
+def chat_allowance(request: Request):
+    if not ANTHROPIC_API_KEY:
+        raise CHAT_UNAVAILABLE
+    day = chat_day()
+    try:
+        with pool().connection() as conn:
+            allowance = chat_with_ai.allowance(conn, chat_with_ai.visitor_key(request, day), day.isoformat())
+    except psycopg.errors.UndefinedTable:
+        raise CHAT_UNAVAILABLE
+    return {"remaining": allowance.remaining, "limit": CHAT_VISITOR_DAILY, "reason": allowance.reason}
+
+@app.post("/api/rs/{ticker}/chat")
+def rs_chat(ticker: str, conversation: Conversation, request: Request):
+    if not ANTHROPIC_API_KEY:
+        raise CHAT_UNAVAILABLE
+    ticker = ticker.upper()
+    day = chat_day()
+    visitor = chat_with_ai.visitor_key(request, day)
+    try:
+        with pool().connection() as conn:
+            blurb = current_blurb(conn, ticker, date.today())
+            if blurb is None:
+                raise HTTPException(404, "Chat only works for Leaders")
+            context = chat_with_ai.leader_context(conn, blurb)
+            allowance = chat_with_ai.take_message(conn, visitor, day.isoformat())
+    except psycopg.errors.UndefinedTable:
+        raise CHAT_UNAVAILABLE
+    except LimitReached as e:
+        raise HTTPException(429, {"reason": e.reason})
+
+    chunks = chat_with_ai.reply(chat_with_ai.ai_client(), context, conversation.messages)
+    # Wait for the first text so a failed call is a clean error, and the message isn't used up
+    try:
+        first = next(chunks, "")
+    except anthropic.APIError:
+        with pool().connection() as conn:
+            chat_with_ai.refund(conn, visitor, day.isoformat())
+        raise HTTPException(502, "The AI Researcher couldn't answer. Try again.")
+    return StreamingResponse(
+        chain([first], chunks),
+        media_type="text/plain; charset=utf-8",
+        headers={"X-Chat-Remaining": str(allowance.remaining), "Cache-Control": "no-store"},
+    )
 
 @app.get("/api/rs/{ticker}")
 def rs_ticker(ticker: str):

@@ -63,6 +63,21 @@ export type Blurb = {
   market: MarketDirection | null
 }
 
+export type ChatMessage = { role: 'user' | 'assistant'; content: string }
+
+// Why no messages are left: the visitor used theirs today, or the site hit its daily cap
+export type ChatLimit = 'visitor' | 'site'
+
+export type ChatAllowance = { remaining: number; limit: number; reason: ChatLimit | null }
+
+export class ChatLimitError extends Error {
+  reason: ChatLimit
+  constructor(reason: ChatLimit) {
+    super(`Chat limit reached (${reason})`)
+    this.reason = reason
+  }
+}
+
 async function getJson<T>(url: string): Promise<T> {
   const res = await fetch(url)
   if (!res.ok) throw new Error(`${res.status} ${res.statusText} (${url})`)
@@ -85,6 +100,21 @@ export const api = {
     if (res.status === 404) return null
     if (!res.ok) throw new Error(`${res.status} ${res.statusText} (${url})`)
     return res.json()
+  },
+  chatAllowance: () => getJson<ChatAllowance>('/api/chat/allowance'),
+  // Streams the reply to the last message through onText
+  chat: async (ticker: string, messages: ChatMessage[], onText: (text: string) => void): Promise<void> => {
+    const url = `/api/rs/${encodeURIComponent(ticker)}/chat`
+    const res = await fetch(url, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ messages }) })
+    if (res.status === 429) throw new ChatLimitError((await res.json()).detail.reason)
+    if (!res.ok || !res.body) throw new Error(`${res.status} ${res.statusText} (${url})`)
+    const reader = res.body.getReader()
+    const decoder = new TextDecoder()
+    for (;;) {
+      const { done, value } = await reader.read()
+      if (done) break
+      onText(decoder.decode(value, { stream: true }))
+    }
   },
 }
 

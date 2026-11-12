@@ -66,6 +66,13 @@ CREATE TABLE IF NOT EXISTS blurbs (
     created_at TEXT NOT NULL,
     PRIMARY KEY (ticker, date)
 );
+-- Chat messages sent per visitor per UTC day; the visitor '*' row holds the site total
+CREATE TABLE IF NOT EXISTS chat_usage (
+    day      TEXT NOT NULL,
+    visitor  TEXT NOT NULL,
+    messages INTEGER NOT NULL,
+    PRIMARY KEY (day, visitor)
+);
 """
 
 

@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query'
 import { useId, useState } from 'react'
 import type { BlurbFields, MarketDirection } from '../api'
 import { blurbQuery } from '../queries'
+import ChatWithAI from './ChatWithAI'
 
 type Props = { ticker: string; name: string }
 
@@ -44,7 +45,7 @@ function MarketBadge({ market }: { market: MarketDirection }) {
   )
 }
 
-// Shows the selected company's latest Blurb, written by the weekly Blurb run; only Leaders have one
+// Shows the selected company's latest Blurb, written by the weekly Blurb run, and lets Leaders be chatted about
 export default function AiResearcher({ ticker, name }: Props) {
   const [open, setOpen] = useState(false)
   const panelId = useId()
@@ -70,7 +71,12 @@ export default function AiResearcher({ ticker, name }: Props) {
               </svg>
             </button>
           </div>
-          <div className="chat-messages" role="status">
+          <ChatWithAI
+            key={ticker}
+            ticker={ticker}
+            enabled={!!data}
+            disabledReason={data === null ? 'Chat only works for Leaders, the top 50 companies by RS rating.' : undefined}
+          >
             <p className="chat-bubble">
               You've selected <strong>{name}</strong> ({ticker}) to research.
             </p>
@@ -103,8 +109,7 @@ export default function AiResearcher({ ticker, name }: Props) {
                 )}
               </>
             )}
-          </div>
-          <input className="chat-input" type="text" placeholder="Message AI Researcher…" aria-label="Message" disabled />
+          </ChatWithAI>
         </div>
       )}
     </div>

@@ -15,7 +15,7 @@ import psycopg
 from psycopg.types.json import Jsonb
 from pydantic import BaseModel, ValidationError
 
-from app.config import ANTHROPIC_API_KEY, BLURB_MODEL, LEADER_COUNT
+from app.config import ANTHROPIC_API_KEY, BLURB_MAX_AGE_DAYS, BLURB_MODEL, LEADER_COUNT
 from app.db import Row, connect, init_schema, one
 from app.etl import weekdays
 from app.market import market_direction
@@ -200,6 +200,26 @@ def save_blurb(conn: psycopg.Connection[Row], ticker: str, rated: str, blurb: Bl
                 datetime.now(UTC).isoformat(timespec="seconds"),
             ),
         )
+
+
+def is_current(blurb_date: str, today: date) -> bool:
+    return date.fromisoformat(blurb_date) >= today - timedelta(days=BLURB_MAX_AGE_DAYS)
+
+
+def current_blurb(conn: psycopg.Connection[Row], ticker: str, today: date) -> dict | None:
+    """The ticker's latest Blurb with that date's Market direction, or None if it has none at most 7 days old."""
+    row = conn.execute(
+        """SELECT b.ticker, b.date, b.blurb, b.headlines, m.data AS market
+           FROM blurbs b
+           LEFT JOIN market_directions m USING (date)
+           WHERE b.ticker = %s
+           ORDER BY b.date DESC
+           LIMIT 1""",
+        (ticker,),
+    ).fetchone()
+    if row is None or not is_current(row["date"], today):
+        return None
+    return dict(row)
 
 
 def save_market(conn: psycopg.Connection[Row], market: dict) -> None:

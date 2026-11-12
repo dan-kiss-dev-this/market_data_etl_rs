@@ -24,3 +24,11 @@ BLURB_MODEL = "claude-haiku-5-5"
 LEADER_COUNT = 50
 # The AI Researcher panel stops showing a Blurb this many days after its rated date
 BLURB_MAX_AGE_DAYS = 7
+
+# ChatWithAI: follow-up questions about a Leader in the AI Researcher panel
+CHAT_MODEL = "claude-haiku-5-5"
+# Messages per visitor per UTC day, and across the whole site; the site cap bounds the daily cost
+CHAT_VISITOR_DAILY = 5
+CHAT_SITE_DAILY = 100
+CHAT_MAX_CHARS = 250
+CHAT_MAX_TOKENS = 1024

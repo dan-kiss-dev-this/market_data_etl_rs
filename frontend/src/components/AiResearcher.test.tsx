@@ -2,7 +2,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { cleanup, fireEvent, render, screen } from '@testing-library/react'
 import type { ReactElement } from 'react'
-import { afterEach, expect, test, vi } from 'vitest'
+import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { api } from '../api'
 import type { Blurb } from '../api'
 import AiResearcher from './AiResearcher'
@@ -10,6 +10,9 @@ import AiResearcher from './AiResearcher'
 // Vitest doesn't expose afterEach globally here, so RTL can't clean up on its own
 afterEach(cleanup)
 afterEach(() => vi.restoreAllMocks())
+beforeEach(() => {
+  vi.spyOn(api, 'chatAllowance').mockResolvedValue({ remaining: 5, limit: 5, reason: null })
+})
 
 function renderWithQueries(ui: ReactElement) {
   const client = new QueryClient()
@@ -64,6 +67,8 @@ test('shows the Blurb with the Market direction and cited sources', async () => 
   expect(panel.textContent).toContain('Updated 2026-11-10')
   expect(screen.getByRole('link', { name: 'Nvidia beats and raises' }).getAttribute('href')).toBe('https://example.com/a')
   expect(screen.getByText('Online')).toBeTruthy()
+  expect(await screen.findByText('5 of 5 messages left today')).toBeTruthy()
+  expect((screen.getByRole('textbox', { name: 'Message' }) as HTMLInputElement).disabled).toBe(false)
 })
 
 test('says there is no current Blurb for a company that is not a Leader', async () => {
@@ -73,6 +78,8 @@ test('says there is no current Blurb for a company that is not a Leader', async 
 
   expect(await screen.findByText('No current Blurb. Blurbs cover the top 50 by RS rating.')).toBeTruthy()
   expect(screen.getByText('Offline')).toBeTruthy()
+  expect(screen.getByText('Chat only works for Leaders, the top 50 companies by RS rating.')).toBeTruthy()
+  expect((screen.getByRole('textbox', { name: 'Message' }) as HTMLInputElement).disabled).toBe(true)
 })
 
 test('says so when the Blurb fails to load', async () => {

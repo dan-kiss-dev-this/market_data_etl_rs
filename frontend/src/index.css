@@ -555,7 +555,7 @@ select,
   padding: 14px;
   background: var(--page);
   /* A full Blurb is taller than a phone screen; scroll inside the panel instead */
-  max-height: min(60vh, 520px);
+  max-height: min(30vh, 260px);
   overflow-y: auto;
 }
 .market-badge {

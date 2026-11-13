@@ -1,4 +1,5 @@
 import os
+from collections.abc import Mapping
 from pathlib import Path
 
 from dotenv import load_dotenv
@@ -7,8 +8,21 @@ BACKEND_DIR = Path(__file__).resolve().parent.parent
 # Doesn't override variables already set, so `uv run --env-file .env.production ...` wins
 load_dotenv(BACKEND_DIR / ".env")
 
-# Local Postgres.app (dev) by default; .env.production points it at Supabase (production)
-DATABASE_URL = os.environ.get("DATABASE_URL", "postgresql://postgres@localhost:5432/market")
+
+def database_url(environ: Mapping[str, str]) -> str:
+    """Local Postgres.app (dev) when unset; .env.production points it at Supabase (production)."""
+    url = environ.get("DATABASE_URL")
+    if url is None:
+        return "postgresql://postgres@localhost:5432/market"
+    if not url.strip():
+        # psycopg would read "" as the local Unix socket and fail with a misleading error
+        raise RuntimeError(
+            "DATABASE_URL is set but empty; in GitHub Actions this means the repo has no DATABASE_URL secret"
+        )
+    return url
+
+
+DATABASE_URL = database_url(os.environ)
 
 # Massive is the rebranded Polygon.io; api.polygon.io is the legacy host
 MASSIVE_BASE_URL = "https://api.massive.com"

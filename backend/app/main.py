@@ -12,11 +12,14 @@ from app import chat_with_ai
 from app.blurbs import current_blurb
 from app.chat_with_ai import Conversation, LimitReached
 from app.config import ANTHROPIC_API_KEY, BACKEND_DIR, BENCHMARK, CHAT_VISITOR_DAILY, LEADER_COUNT
-from app.db import pool
+from app.db import init_schema, pool
 
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # The only place production's schema changes: Render starts this after the tests pass
+    with pool().connection() as conn:
+        init_schema(conn)
     yield
     pool().close()
 

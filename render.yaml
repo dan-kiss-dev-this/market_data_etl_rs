@@ -10,7 +10,7 @@ services:
     dockerfilePath: ./deploy/Dockerfile
     dockerContext: .
     healthCheckPath: /api/health
-    autoDeployTrigger: commit
+    autoDeployTrigger: checksPass # deploy once the Tests workflow passes; startup applies schema changes
     envVars:
       - key: DATABASE_URL
         sync: false

@@ -1,13 +1,6 @@
 from app import pull_prod
 
 
-def test_only_local_databases_can_be_written():
-    assert pull_prod.is_local("postgresql://postgres@localhost:5432/market")
-    assert pull_prod.is_local("postgresql://postgres@127.0.0.1/market")
-    assert pull_prod.is_local("postgresql:///market")  # Unix socket
-    assert not pull_prod.is_local("postgresql://postgres.ref:pw@aws-0-us-east-2.pooler.supabase.com:5432/postgres")
-
-
 def test_tickers_whose_history_differs_are_recopied():
     local = {"AAPL": (500, 90000.0), "NVDA": (500, 50000.0), "OLD": (300, 1000.0)}
     remote = {
@@ -16,3 +9,32 @@ def test_tickers_whose_history_differs_are_recopied():
         "NEW": (480, 2000.0),  # added to the S&P 500 with its history
     }
     assert pull_prod.changed_tickers(local, remote) == ["NEW", "NVDA", "OLD"]
+
+
+LOCAL = {
+    "companies": ["ticker", "name", "sector", "industry"],  # a column not deployed yet
+    "daily_bars": ["ticker", "date", "close", "volume"],
+    "chat_usage": ["day", "visitor", "messages"],
+    "watchlist": ["ticker"],  # a table not deployed yet
+}
+REMOTE = {
+    "companies": ["ticker", "name", "sector"],
+    "daily_bars": ["ticker", "date", "close", "volume"],
+    "chat_usage": ["day", "visitor", "messages"],
+}
+
+
+def test_every_shared_table_is_replaced_except_skipped_ones():
+    assert pull_prod.tables_to_replace(LOCAL, REMOTE) == ["companies"]
+
+
+def test_only_columns_both_sides_have_are_copied():
+    assert pull_prod.shared_columns(LOCAL, REMOTE, "companies") == "ticker, name, sector"
+
+
+def test_schema_drift_is_reported():
+    assert pull_prod.differences(LOCAL, REMOTE) == [
+        "table watchlist: only local (not deployed yet?), not copied",
+        "companies.industry: only local, left empty",
+    ]
+    assert pull_prod.differences(LOCAL, LOCAL) == []

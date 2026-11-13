@@ -14,7 +14,7 @@ import psycopg
 
 from app import rs
 from app.config import BENCHMARK, CONSTITUENTS_URL
-from app.db import Row, connect, init_schema, one
+from app.db import Row, connect, ensure_schema, one
 from app.massive import MIN_SECONDS_BETWEEN_CALLS, MassiveClient, bar_date
 
 DEFAULT_DAYS = 725  # just inside the free tier's 2-year history limit
@@ -249,7 +249,7 @@ def main() -> None:
     args = parser.parse_args()
 
     conn = connect()
-    init_schema(conn)
+    ensure_schema(conn)
     if not args.rs_only:
         client = MassiveClient()
         tickers = load_companies(conn)

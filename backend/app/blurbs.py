@@ -16,7 +16,7 @@ from psycopg.types.json import Jsonb
 from pydantic import BaseModel, ValidationError
 
 from app.config import ANTHROPIC_API_KEY, BLURB_MAX_AGE_DAYS, BLURB_MODEL, LEADER_COUNT
-from app.db import Row, connect, init_schema, one
+from app.db import Row, connect, ensure_schema, one
 from app.etl import weekdays
 from app.market import market_direction
 from app.massive import MassiveClient
@@ -283,7 +283,7 @@ def main() -> None:
         raise SystemExit("ANTHROPIC_API_KEY is missing; add it to backend/.env")
 
     conn = connect()
-    init_schema(conn)
+    ensure_schema(conn)
     rated = one(conn.execute("SELECT MAX(date) FROM rs_ratings"))[0]
     if rated is None:
         raise SystemExit("No RS Ratings yet; run the ETL first")

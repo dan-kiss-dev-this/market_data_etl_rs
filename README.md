@@ -63,7 +63,7 @@ The AI Researcher panel lets a visitor ask follow-up questions about a Leader. C
 - **Only for Leaders:** chat works only for companies with a current Blurb. Other companies show a disabled input.
 - **Limits** (in `backend/app/config.py`): each visitor gets 5 messages per UTC day, of up to 250 characters each, and the whole site gets 100 a day. Visitors are anonymous and are identified by a hash of the day and their IP. No IP is stored.
 - **Cost:** about $0.001 a message, so the site cap holds spending to about $0.11 a day. As a backstop, set a monthly spend limit in the Anthropic Console.
-- **Setup:** chat uses the same `ANTHROPIC_API_KEY` as the Blurb run, plus a `chat_usage` table that the ETL creates. Without the key or the table, the endpoint returns 503 and the panel shows chat as unavailable. On Render, enter the key in the dashboard (`render.yaml` declares it with `sync: false`).
+- **Setup:** chat uses the same `ANTHROPIC_API_KEY` as the Blurb run, plus a `chat_usage` table that the API creates when it starts. Without the key or the table, the endpoint returns 503 and the panel shows chat as unavailable. On Render, enter the key in the dashboard (`render.yaml` declares it with `sync: false`).
 
 ## Dev and production
 
@@ -79,16 +79,33 @@ uv run --env-file .env.production fastapi dev app/main.py         # the local ap
 uv run python -m app.pull_prod                                    # bring dev up to date with production
 ```
 
-`app.pull_prod` only reads from Supabase. It copies only what dev is missing:
+`app.pull_prod` only reads from Supabase. Data flows one way, production → dev. It copies only what dev is missing:
 - new `daily_bars` days
 - the full history of any ticker whose past bars changed (a split or a rename)
-- the small tables: companies, Blurbs, Market directions and descriptions
+- every other table, replaced whole, except those in `SKIPPED` in `app/pull_prod.py`
 
 Then it rebuilds RS ratings locally. Chat message counts aren't copied. It takes a few seconds and is safe to rerun.
+If the two schemas differ (a change you haven't deployed yet, or one you haven't pulled), it prints each difference as `schema drift: …` and copies only the tables and columns both have.
+
+### Changing the schema
+
+The schema lives in code, in `backend/app/db.py`. Never change Supabase's tables by hand.
+1. A new table goes in `SCHEMA`. A change to an existing table (a new column, an index) is appended to `MIGRATIONS` and never edited after it ships. Migrations only add things; a test rejects `DROP`, `TRUNCATE`, `DELETE` and column type changes.
+2. Run anything locally (`fastapi dev`, the ETL, `pull_prod`). It applies the change to dev.
+3. Push to `main`. Once the tests pass, Render deploys, and the API applies the change to Supabase as it starts. That's the only time production's schema changes. All pending migrations run in one transaction, so one that fails changes nothing.
+4. Run `pull_prod` to refresh dev's data. New tables are copied automatically; add one to `SKIPPED` if it shouldn't be.
+
+Until the deploy finishes, the Daily refresh and the Blurb run stop with "The database is behind this code" instead of changing Supabase themselves. The next refresh picks it up.
+
+A new column on an existing table is empty for existing rows. Filling it in for past days, from Massive or otherwise, is a separate job you run on purpose. Before any change that removes or rewrites data, which you'd do by hand, back up production first (from `backend/`):
+
+```bash
+pg_dump "$(grep '^DATABASE_URL=' .env.production | cut -d= -f2-)" -Fc -f data/backups/prod-$(date +%F).dump
+```
 
 ## Deployment
 
-**Site:** one Render web service (`render.yaml`) builds `deploy/Dockerfile` and serves the API and the built frontend. It redeploys on every push to `main`. Its `DATABASE_URL`, the Supabase session-pooler URL, is entered in the Render dashboard and never committed.
+**Site:** one Render web service (`render.yaml`) builds `deploy/Dockerfile` and serves the API and the built frontend. It redeploys on every push to `main`, once the tests (`.github/workflows/test.yml`) pass (`autoDeployTrigger: checksPass`), and it applies schema changes to Supabase as it starts. The service is managed by the `market_data_etl_rs_render` Blueprint with Auto Sync on, so edits to `render.yaml` take effect when pushed. Its `DATABASE_URL`, the Supabase session-pooler URL, is entered in the Render dashboard and never committed.
 
 **Daily refresh:** `.github/workflows/daily-refresh.yml` runs the ETL against the same Supabase database at 07:00 UTC and 13:00 UTC, Tuesday to Saturday. The site picks up new ratings straight away, with no redeploy. By US morning it shows the previous trading day.
 - It runs overnight, not at the close, because Massive's free tier only serves a trading day after it has ended, and the ETL fetches up to yesterday by the runner's UTC date. A run at the close would always be a day behind. 07:00 UTC is 2 am EST / 3 am EDT.

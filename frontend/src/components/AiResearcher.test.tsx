@@ -71,6 +71,16 @@ test('shows the Blurb with the Market direction and cited sources', async () => 
   expect((screen.getByRole('textbox', { name: 'Message' }) as HTMLInputElement).disabled).toBe(false)
 })
 
+test('shows What they sell last, after Risks', async () => {
+  vi.spyOn(api, 'blurb').mockResolvedValue(blurb)
+  renderWithQueries(<AiResearcher ticker="NVDA" name="Nvidia Corp." />)
+  fireEvent.click(screen.getByRole('button', { name: 'AI Researcher' }))
+
+  await screen.findByText('GPUs for AI data centers.')
+  const labels = Array.from(screen.getByRole('status').querySelectorAll('.blurb-label')).map((l) => l.textContent)
+  expect(labels).toEqual(['Catalyst', 'Category position', 'Momentum', 'Risks', 'What they sell'])
+})
+
 test('says there is no current Blurb for a company that is not a Leader', async () => {
   vi.spyOn(api, 'blurb').mockResolvedValue(null)
   renderWithQueries(<AiResearcher ticker="MRNA" name="Moderna Inc." />)

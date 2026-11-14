@@ -7,11 +7,11 @@ import ChatWithAI from './ChatWithAI'
 type Props = { ticker: string; name: string }
 
 const FIELDS: [keyof BlurbFields, string][] = [
-  ['what_they_sell', 'What they sell'],
   ['catalyst', 'Catalyst'],
   ['category_position', 'Category position'],
   ['momentum', 'Momentum'],
   ['risks', 'Risks'],
+  ['what_they_sell', 'What they sell'],
 ]
 
 const MARKET_CLASS: Record<MarketDirection['status'], string> = {

@@ -35,6 +35,7 @@ Once a week the owner runs a local **Blurb run**. For each of the 50 Leaders it 
 
   Breadth (the % of companies above their own 50-day average) is shown for information only.
 - **Model:** `claude-haiku-5-5` at low effort. It returns structured output with the fields `what_they_sell`, `catalyst`, `catalyst_sources`, `category_position`, `momentum`, `risks`. It may use general knowledge for What they sell and Category position. The Catalyst must come only from the numbered headlines it was given.
+- **Panel order:** Catalyst, Category position, Momentum, Risks, What they sell (changed 2026-11-14; What they sell used to come first). The model's output order is unchanged.
 - **Storage:**
   - `blurbs (ticker, date)` holds the Blurb, the cited headlines and the model, and is upserted on rerun
   - `market_directions (date)` holds that day's market snapshot

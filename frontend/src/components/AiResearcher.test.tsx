@@ -31,7 +31,7 @@ const blurb: Blurb = {
     risks: 'Export limits on China sales.',
   },
   headlines: [{ date: '2026-11-05', title: 'Nvidia beats and raises', publisher: 'Reuters', url: 'https://example.com/a' }],
-  market: { status: 'Under pressure', breadth: 0.69 },
+  market: { date: '2026-11-12', status: 'Under pressure', breadth: 0.69 },
 }
 
 test('names the selected company while looking up its Blurb', () => {
@@ -62,7 +62,7 @@ test('shows the Blurb with the Market direction and cited sources', async () => 
 
   expect(await screen.findByText('Earnings beat and raised guidance on Nov 5.')).toBeTruthy()
   const panel = screen.getByRole('status')
-  expect(panel.textContent).toContain('S&P 500: Under pressure')
+  expect(panel.textContent).toContain('S&P 500 on 2026-11-12: Under pressure')
   expect(panel.textContent).toContain('Breadth 69%')
   expect(panel.textContent).toContain('Updated 2026-11-10')
   expect(screen.getByRole('link', { name: 'Nvidia beats and raises' }).getAttribute('href')).toBe('https://example.com/a')

@@ -4,6 +4,7 @@ plus breadth (the share of companies above their own 50-day average), shown for 
 from collections.abc import Sequence
 
 import psycopg
+from psycopg.types.json import Jsonb
 
 from app.config import BENCHMARK
 from app.db import Row
@@ -85,3 +86,11 @@ def market_direction(conn: psycopg.Connection[Row], date: str) -> dict | None:
     for r in rows:
         closes_by_ticker.setdefault(r["ticker"], []).append(r["close"])
     return {"date": date, **result, "breadth": breadth(closes_by_ticker)}
+
+
+def save_market(conn: psycopg.Connection[Row], market: dict) -> None:
+    with conn.transaction():
+        conn.execute(
+            "INSERT INTO market_directions VALUES (%s, %s) ON CONFLICT (date) DO UPDATE SET data = EXCLUDED.data",
+            (market["date"], Jsonb(market)),
+        )

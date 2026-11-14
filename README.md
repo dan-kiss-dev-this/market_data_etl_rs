@@ -107,7 +107,7 @@ pg_dump "$(grep '^DATABASE_URL=' .env.production | cut -d= -f2-)" -Fc -f data/ba
 
 **Site:** one Render web service (`render.yaml`) builds `deploy/Dockerfile` and serves the API and the built frontend. It redeploys on every push to `main`, once the tests (`.github/workflows/test.yml`) pass (`autoDeployTrigger: checksPass`), and it applies schema changes to Supabase as it starts. The service is managed by the `market_data_etl_rs_render` Blueprint with Auto Sync on, so edits to `render.yaml` take effect when pushed. Its `DATABASE_URL`, the Supabase session-pooler URL, is entered in the Render dashboard and never committed.
 
-**Daily refresh:** `.github/workflows/daily-refresh.yml` runs the ETL against the same Supabase database at 07:00 UTC and 13:00 UTC, Tuesday to Saturday. The site picks up new ratings straight away, with no redeploy. By US morning it shows the previous trading day.
+**Daily refresh:** `.github/workflows/daily-refresh.yml` runs the ETL against the same Supabase database at 07:00 UTC and 13:00 UTC, Tuesday to Saturday. It also saves that day's Market direction, which the AI Researcher panel shows next to every Blurb. The site picks up new ratings straight away, with no redeploy. By US morning it shows the previous trading day.
 - It runs overnight, not at the close, because Massive's free tier only serves a trading day after it has ended, and the ETL fetches up to yesterday by the runner's UTC date. A run at the close would always be a day behind. 07:00 UTC is 2 am EST / 3 am EDT.
 - The 13:00 UTC run retries in case Massive published late. When there's nothing new it finishes in seconds.
 - A market holiday shows as "no data yet" for up to three days and is then recorded as closed. That isn't a failure.

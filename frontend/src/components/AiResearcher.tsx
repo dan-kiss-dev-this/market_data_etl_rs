@@ -34,7 +34,7 @@ function ChatIcon() {
 function MarketBadge({ market }: { market: MarketDirection }) {
   return (
     <p className={`market-badge ${MARKET_CLASS[market.status]}`}>
-      S&amp;P 500: {market.status}
+      S&amp;P 500 on {market.date}: {market.status}
       {market.breadth !== null && (
         <span title="Share of S&P 500 companies above their own 50-day average">
           {' '}

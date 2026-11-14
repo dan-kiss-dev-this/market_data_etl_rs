@@ -15,6 +15,7 @@ import psycopg
 from app import rs
 from app.config import BENCHMARK, CONSTITUENTS_URL
 from app.db import Row, connect, ensure_schema, one
+from app.market import market_direction, save_market
 from app.massive import MIN_SECONDS_BETWEEN_CALLS, MassiveClient, bar_date
 
 DEFAULT_DAYS = 725  # just inside the free tier's 2-year history limit
@@ -233,6 +234,15 @@ def compute_rs(conn: psycopg.Connection[Row]) -> None:
         print(f"  (needs {rs.MIN_BARS} trading days of {BENCHMARK}; have {len(dates)})")
 
 
+def update_market_direction(conn: psycopg.Connection[Row]) -> None:
+    """Save the Market direction for the latest rated date, so the panel's is never older than the ratings."""
+    rated = one(conn.execute("SELECT MAX(date) FROM rs_ratings"))[0]
+    market = market_direction(conn, rated) if rated else None
+    if market is not None:
+        save_market(conn, market)
+    print(f"Market direction on {rated}: {market['status'] if market else 'not enough history'}")
+
+
 def print_summary(conn: psycopg.Connection[Row]) -> None:
     first, last, days = one(
         conn.execute("SELECT MIN(date), MAX(date), COUNT(*) FROM daily_bars WHERE ticker = %s", (BENCHMARK,))
@@ -257,6 +267,7 @@ def main() -> None:
         fix_renames(conn, client, tickers)
         apply_splits(conn, client, tickers)
     compute_rs(conn)
+    update_market_direction(conn)
     print_summary(conn)
 
 

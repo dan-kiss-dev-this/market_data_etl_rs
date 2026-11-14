@@ -35,6 +35,8 @@ export type TickerDetail = {
 }
 
 export type MarketDirection = {
+  // The latest Daily refresh's rated date, often newer than the Blurb
+  date: string
   status: 'Uptrend' | 'Under pressure' | 'Downtrend'
   // Share (0-1) of S&P 500 companies above their own 50-day average
   breadth: number | null

@@ -18,7 +18,7 @@ from pydantic import BaseModel, ValidationError
 from app.config import ANTHROPIC_API_KEY, BLURB_MAX_AGE_DAYS, BLURB_MODEL, LEADER_COUNT
 from app.db import Row, connect, ensure_schema, one
 from app.etl import weekdays
-from app.market import market_direction
+from app.market import market_direction, save_market
 from app.massive import MassiveClient
 
 # The Daily refresh starts at 07:00 and 13:00 UTC, Tuesday to Saturday, and shares the
@@ -207,11 +207,12 @@ def is_current(blurb_date: str, today: date) -> bool:
 
 
 def current_blurb(conn: psycopg.Connection[Row], ticker: str, today: date) -> dict | None:
-    """The ticker's latest Blurb with that date's Market direction, or None if it has none at most 7 days old."""
+    """The ticker's latest Blurb with the latest Market direction, or None if it has none at most 7 days old.
+    The Daily refresh saves a Market direction every trading day, so it's often newer than the Blurb."""
     row = conn.execute(
         """SELECT b.ticker, b.date, b.blurb, b.headlines, m.data AS market
            FROM blurbs b
-           LEFT JOIN market_directions m USING (date)
+           LEFT JOIN (SELECT data FROM market_directions ORDER BY date DESC LIMIT 1) m ON true
            WHERE b.ticker = %s
            ORDER BY b.date DESC
            LIMIT 1""",
@@ -220,14 +221,6 @@ def current_blurb(conn: psycopg.Connection[Row], ticker: str, today: date) -> di
     if row is None or not is_current(row["date"], today):
         return None
     return dict(row)
-
-
-def save_market(conn: psycopg.Connection[Row], market: dict) -> None:
-    with conn.transaction():
-        conn.execute(
-            "INSERT INTO market_directions VALUES (%s, %s) ON CONFLICT (date) DO UPDATE SET data = EXCLUDED.data",
-            (market["date"], Jsonb(market)),
-        )
 
 
 def run(

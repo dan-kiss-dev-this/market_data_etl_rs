@@ -39,7 +39,7 @@ Once a week the owner runs a local **Blurb run**. For each of the 50 Leaders it 
   - `blurbs (ticker, date)` holds the Blurb, the cited headlines and the model, and is upserted on rerun
   - `market_directions (date)` holds that day's market snapshot
 - **Startup guard:** 07:00–07:45 and 13:00–13:45 UTC, Tue–Sat, which match the Daily refresh schedule in `.github/workflows/daily-refresh.yml`.
-- **Endpoint:** `GET /api/rs/{ticker}/blurb` returns the latest Blurb if it is at most 7 days old, with that date's Market direction. Otherwise it returns 404.
+- **Endpoint:** `GET /api/rs/{ticker}/blurb` returns the latest Blurb if it is at most 7 days old, with the latest Market direction, which the Daily refresh saves every trading day (changed 2026-11-13; it used to be the Blurb's date's). Otherwise it returns 404.
 
 ## Testing Decisions
 - `market_direction` is tested on made-up uptrend, downtrend and choppy series.

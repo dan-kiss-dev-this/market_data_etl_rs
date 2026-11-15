@@ -1,5 +1,7 @@
 # Market Data ETL and RS with FastAPI + React
 
+## Website https://market-rs.onrender.com/
+
 ## Running it
 
 Start the backend and the frontend in separate terminals. Each command block starts from the project root.

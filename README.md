@@ -117,6 +117,8 @@ pg_dump "$(grep '^DATABASE_URL=' .env.production | cut -d= -f2-)" -Fc -f data/ba
 - There's no manual trigger. To refresh on demand, run the ETL locally against production: `uv run --env-file .env.production python -m app.etl`.
 - **GitHub turns off scheduled workflows after 60 days with no commits to the repo.** To turn it back on, open the repo's Actions tab, pick "Daily refresh" and click "Enable workflow", or run `gh workflow enable daily-refresh.yml`.
 
+**Analytics:** visitor stats (pages, referrers, countries) are in Cloudflare → Web Analytics, from a beacon that only production builds load (`frontend/src/analytics.ts`). Render's Metrics tab shows request volume.
+
 **CI:** `.github/workflows/test.yml` runs pytest, Vitest and actionlint on every push and pull request. It needs no secrets.
 
 ## Adding dependencies

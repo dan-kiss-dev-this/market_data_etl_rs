@@ -13,3 +13,7 @@ The five default triage roles (`needs-triage`, `needs-info`, `ready-for-agent`, 
 ### Domain docs
 
 Single-context: `GLOSSARY.md` and `docs/adr/` at the repo root. See `docs/agents/domain.md`.
+
+### Tests first
+
+Any code added or changed gets a test (pytest for `backend/`, Vitest for `frontend/`). Write the test first and run it to see it fail, then write the code to make it pass. Tickets list the test as their first checkbox.

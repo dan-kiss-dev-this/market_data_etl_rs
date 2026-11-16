@@ -51,6 +51,12 @@ CREATE TABLE IF NOT EXISTS rs_ratings (
     PRIMARY KEY (date, ticker)
 );
 CREATE INDEX IF NOT EXISTS idx_rs_ratings_ticker ON rs_ratings (ticker, date);
+-- Each ticker's highest close in daily_bars (about 2 years), for the chat's "all-time high" answers
+CREATE TABLE IF NOT EXISTS high_close_past_2_years (
+    ticker TEXT PRIMARY KEY,
+    date   TEXT NOT NULL,
+    close  DOUBLE PRECISION NOT NULL
+);
 -- Massive's company descriptions; kept apart from companies, which the ETL rebuilds each run
 CREATE TABLE IF NOT EXISTS company_profiles (
     ticker      TEXT PRIMARY KEY,

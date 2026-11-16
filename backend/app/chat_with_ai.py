@@ -6,6 +6,7 @@ logged-in (Supabase Auth) user instead.
 """
 
 import hashlib
+import json
 from collections.abc import Iterator
 from dataclasses import dataclass
 from datetime import date
@@ -26,7 +27,7 @@ from app.config import (
     CHAT_SITE_DAILY,
     CHAT_VISITOR_DAILY,
 )
-from app.db import Row
+from app.db import Row, pool
 
 # The chat_usage row that counts the whole site's messages
 SITE = "*"
@@ -41,7 +42,26 @@ and the Market direction.
 
 Answer in a few plain sentences. You may use general knowledge about the company, its products and \
 its rivals, but take recent events only from the context: if the context doesn't cover something \
-recent, say so instead of guessing. Be concrete. No hype, and never advise buying or selling."""
+recent, say so instead of guessing. Be concrete. No hype, and never advise buying or selling.
+
+For the all-time high, or the highest close or price in the past year or past 2 years, of this or any \
+other ticker, use the get_high_close_past_2_years tool. Give the price and its date, and say it's the \
+highest close in the last 2 years, as that's all the price history the site has. If it has no data, say \
+so and don't give a price."""
+
+HIGH_CLOSE_TOOL = {
+    "name": "get_high_close_past_2_years",
+    "description": "The highest daily close of an S&P 500 ticker in the last 2 years, with its date. Use it "
+    "when the user asks for the all-time high, or the highest close or price in the past year or past 2 years. "
+    "The site only has the last 2 years of daily closes, so this is the highest it knows of.",
+    "input_schema": {
+        "type": "object",
+        "properties": {"ticker": {"type": "string", "description": "The ticker symbol, such as NVDA"}},
+        "required": ["ticker"],
+    },
+}
+# Model calls per reply, so a model that keeps asking for tools can't run up the bill
+MAX_ROUNDS = 3
 
 REFUSED = "I can't help with that one. Try asking about the company, its Catalyst, its rivals or its risks."
 
@@ -188,25 +208,54 @@ def leader_context(conn: psycopg.Connection[Row], blurb: dict) -> str:
     return build_context(blurb, leader, profile["description"] if profile else "")
 
 
+def high_close(conn: psycopg.Connection[Row], ticker: str) -> dict | None:
+    """The ticker's 2-year high close, or None if it has no bars."""
+    row = conn.execute(
+        "SELECT ticker, date, close FROM high_close_past_2_years WHERE ticker = %s", (ticker.upper(),)
+    ).fetchone()
+    return {"ticker": row["ticker"], "date": row["date"], "close": row["close"]} if row else None
+
+
+def run_tool(name: str, tool_input: dict) -> dict:
+    """Answer one tool call. It opens its own connection, as the request's is closed while the reply streams."""
+    if name != HIGH_CLOSE_TOOL["name"]:
+        return {"error": f"unknown tool {name}"}
+    ticker = str(tool_input.get("ticker", "")).upper()
+    with pool().connection() as conn:
+        return high_close(conn, ticker) or {"error": f"no data for {ticker}"}
+
+
 @cache
 def ai_client() -> anthropic.Anthropic:
     return anthropic.Anthropic(api_key=ANTHROPIC_API_KEY)
 
 
 def reply(ai: anthropic.Anthropic, context: str, messages: list[Message]) -> Iterator[str]:
-    """Stream the AI Researcher's answer to the last message."""
-    with ai.messages.stream(
-        model=CHAT_MODEL,
-        max_tokens=CHAT_MAX_TOKENS,
-        system=[{"type": "text", "text": SYSTEM_PROMPT}, {"type": "text", "text": context}],
-        messages=[m.model_dump() for m in messages],
-        output_config={"effort": "low"},
-        # Caches the instructions, context and history, so each later turn reads them cheaply
-        cache_control={"type": "ephemeral"},
-    ) as stream:
-        yield from stream.text_stream
-        stop_reason = stream.get_final_message().stop_reason
+    """Stream the AI Researcher's answer to the last message, running any tools it asks for."""
+    history: list = [m.model_dump() for m in messages]
+    for _ in range(MAX_ROUNDS):
+        with ai.messages.stream(
+            model=CHAT_MODEL,
+            max_tokens=CHAT_MAX_TOKENS,
+            system=[{"type": "text", "text": SYSTEM_PROMPT}, {"type": "text", "text": context}],
+            messages=history,
+            tools=[HIGH_CLOSE_TOOL],
+            output_config={"effort": "low"},
+            # Caches the instructions, context and history, so each later turn reads them cheaply
+            cache_control={"type": "ephemeral"},
+        ) as stream:
+            yield from stream.text_stream
+            final = stream.get_final_message()
+        stop_reason = final.stop_reason
+        if stop_reason != "tool_use":
+            break
+        results = [
+            {"type": "tool_result", "tool_use_id": b.id, "content": json.dumps(run_tool(b.name, b.input))}
+            for b in final.content
+            if b.type == "tool_use"
+        ]
+        history = [*history, {"role": "assistant", "content": final.content}, {"role": "user", "content": results}]
     if stop_reason == "refusal":
         yield REFUSED
-    elif stop_reason == "max_tokens":
+    elif stop_reason in ("max_tokens", "tool_use"):
         yield "…"

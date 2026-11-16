@@ -15,6 +15,7 @@ import psycopg
 from app import rs
 from app.config import BENCHMARK, CONSTITUENTS_URL
 from app.db import Row, connect, ensure_schema, one
+from app.high_close import refresh_high_closes
 from app.market import market_direction, save_market
 from app.massive import MIN_SECONDS_BETWEEN_CALLS, MassiveClient, bar_date
 
@@ -267,6 +268,7 @@ def main() -> None:
         fix_renames(conn, client, tickers)
         apply_splits(conn, client, tickers)
     compute_rs(conn)
+    refresh_high_closes(conn)
     update_market_direction(conn)
     print_summary(conn)
 

@@ -62,6 +62,7 @@ The news comes only from the Blurb run. It fetches the Leader's last 30 days of 
 ## Chat with AI
 
 The AI Researcher panel lets a visitor ask follow-up questions about a Leader. Claude Haiku answers only from stored data: the Leader's Blurb and the headlines it cites, RS data, company description and Market direction. It runs no web search and makes no Massive call per message, and replies stream in. See `.scratch/chat-with-ai/spec.md`.
+- **2-year high close:** for an all-time high, or the highest close in the past year or 2 years, the AI calls its one tool, `get_high_close_past_2_years`. The tool reads `high_close_past_2_years`, which every Daily refresh rebuilds from `daily_bars`. The reply gives the price and the date, and says it's the 2-year high, because that's all the history the site stores. Check it live with `uv run python -m evals.high_close_eval` from `backend/` (about 1¢ a run, not in CI).
 - **Only for Leaders:** chat works only for companies with a current Blurb. Other companies show a disabled input.
 - **Limits** (in `backend/app/config.py`): each visitor gets 5 messages per UTC day, of up to 250 characters each, and the whole site gets 100 a day. Visitors are anonymous and are identified by a hash of the day and their IP. No IP is stored.
 - **Cost:** about $0.001 a message, so the site cap holds spending to about $0.11 a day. As a backstop, set a monthly spend limit in the Anthropic Console.
@@ -86,7 +87,7 @@ uv run python -m app.pull_prod                                    # bring dev up
 - the full history of any ticker whose past bars changed (a split or a rename)
 - every other table, replaced whole, except those in `SKIPPED` in `app/pull_prod.py`
 
-Then it rebuilds RS ratings locally. Chat message counts aren't copied. It takes a few seconds and is safe to rerun.
+Then it rebuilds RS ratings and 2-year high closes locally. Chat message counts aren't copied. It takes a few seconds and is safe to rerun.
 If the two schemas differ (a change you haven't deployed yet, or one you haven't pulled), it prints each difference as `schema drift: …` and copies only the tables and columns both have.
 
 ### Changing the schema

@@ -84,8 +84,8 @@ def test_context_has_the_blurb_rs_data_and_cited_headlines():
 
 
 class FakeStream:
-    def __init__(self, texts: list[str], stop_reason: str = "end_turn", fail: bool = False):
-        self.texts, self.stop_reason, self.fail = texts, stop_reason, fail
+    def __init__(self, texts: list[str], stop_reason: str = "end_turn", fail: bool = False, content: list | None = None):
+        self.texts, self.stop_reason, self.fail, self.content = texts, stop_reason, fail, content or []
 
     def __enter__(self):
         if self.fail:
@@ -100,18 +100,27 @@ class FakeStream:
         yield from self.texts
 
     def get_final_message(self):
-        return type("Message", (), {"stop_reason": self.stop_reason})()
+        return type("Message", (), {"stop_reason": self.stop_reason, "content": self.content})()
+
+
+def tool_use(ticker: str, id: str = "toolu_1") -> FakeStream:
+    """A turn where the AI asks for a ticker's 2-year high close instead of answering."""
+    block = type("ToolUse", (), {"type": "tool_use", "id": id, "name": "get_high_close_past_2_years",
+                                 "input": {"ticker": ticker}})()  # fmt: skip
+    return FakeStream([], stop_reason="tool_use", content=[block])
 
 
 class FakeAnthropic:
-    def __init__(self, stream: FakeStream):
+    """Plays back one stream per call, repeating the last one."""
+
+    def __init__(self, *streams: FakeStream):
         self.messages = self
-        self.stream_ = stream
+        self.streams = list(streams)
         self.calls: list[dict] = []
 
     def stream(self, **kwargs):
         self.calls.append(kwargs)
-        return self.stream_
+        return self.streams[min(len(self.calls), len(self.streams)) - 1]
 
 
 def test_reply_streams_text_and_handles_refusals():
@@ -124,6 +133,61 @@ def test_reply_streams_text_and_handles_refusals():
     refused = FakeAnthropic(FakeStream([], stop_reason="refusal"))
     assert list(chat_with_ai.reply(refused, "ctx", [])) == [chat_with_ai.REFUSED]
 
+
+
+def test_reply_offers_the_high_close_tool():
+    ai = FakeAnthropic(FakeStream(["Hi."]))
+    list(chat_with_ai.reply(ai, "ctx", Conversation(messages=conversation("Rivals?")).messages))
+    assert [t["name"] for t in ai.calls[0]["tools"]] == ["get_high_close_past_2_years"]
+    assert "2 years" in ai.calls[0]["tools"][0]["description"]
+
+
+def test_reply_runs_the_tool_and_answers_from_its_result(monkeypatch):
+    monkeypatch.setattr(chat_with_ai, "run_tool", lambda name, tool_input: {"ticker": "NVDA", "date": "2025-07-10", "close": 239.24})
+    ai = FakeAnthropic(tool_use("nvda"), FakeStream(["$239.24 on ", "2025-07-10."]))
+    text = list(chat_with_ai.reply(ai, "ctx", Conversation(messages=conversation("All time high?")).messages))
+    assert text == ["$239.24 on ", "2025-07-10."]
+    assert len(ai.calls) == 2
+    assert ai.calls[0]["messages"] == [{"role": "user", "content": "All time high?"}]
+    assistant, result = ai.calls[1]["messages"][1:]
+    assert assistant["role"] == "assistant" and assistant["content"][0].id == "toolu_1"
+    assert result == {"role": "user", "content": [{
+        "type": "tool_result", "tool_use_id": "toolu_1",
+        "content": '{"ticker": "NVDA", "date": "2025-07-10", "close": 239.24}',
+    }]}  # fmt: skip
+
+
+def test_reply_stops_calling_tools_after_three_rounds(monkeypatch):
+    monkeypatch.setattr(chat_with_ai, "run_tool", lambda name, tool_input: {"error": "no data"})
+    ai = FakeAnthropic(tool_use("NVDA"))
+    assert list(chat_with_ai.reply(ai, "ctx", Conversation(messages=conversation("High?")).messages)) == ["…"]
+    assert len(ai.calls) == 3
+
+
+def test_run_tool_looks_up_the_high_close_or_says_there_is_no_data(monkeypatch):
+    class Pool:
+        @contextmanager
+        def connection(self):
+            yield "conn"
+
+    rows = {"NVDA": {"ticker": "NVDA", "date": "2025-07-10", "close": 239.24}}
+    monkeypatch.setattr(chat_with_ai, "pool", lambda: Pool())
+    monkeypatch.setattr(chat_with_ai, "high_close", lambda conn, ticker: rows.get(ticker.upper()))
+    assert chat_with_ai.run_tool("get_high_close_past_2_years", {"ticker": "nvda"}) == rows["NVDA"]
+    assert chat_with_ai.run_tool("get_high_close_past_2_years", {"ticker": "RIVN"}) == {"error": "no data for RIVN"}
+    assert chat_with_ai.run_tool("something_else", {}) == {"error": "unknown tool something_else"}
+
+
+def test_high_close_uppercases_the_ticker():
+    asked = []
+
+    class Conn:
+        def execute(self, sql, params):
+            asked.append(params)
+            return type("Cursor", (), {"fetchone": lambda self: {"ticker": "NVDA", "date": "2025-07-10", "close": 239.24}})()
+
+    assert chat_with_ai.high_close(Conn(), "nvda") == {"ticker": "NVDA", "date": "2025-07-10", "close": 239.24}
+    assert asked == [("NVDA",)]
 
 @pytest.fixture
 def api(monkeypatch):

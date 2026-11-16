@@ -14,12 +14,14 @@ from dotenv import dotenv_values
 from app.config import BACKEND_DIR, DATABASE_URL
 from app.db import CONNECT_KWARGS, Row, connect, init_schema, is_local, one
 from app.etl import compute_rs
+from app.high_close import refresh_high_closes
 
 PRODUCTION_ENV = BACKEND_DIR / ".env.production"
 # Every other table is small enough to replace whole on every run
 SKIPPED = {
     "daily_bars",  # copied incrementally below
     "rs_ratings",  # rebuilt locally from daily_bars, exactly as the Daily refresh does
+    "high_close_past_2_years",  # likewise
     "chat_usage",  # stays local
     "schema_migrations",  # each database records its own
 }
@@ -125,6 +127,7 @@ def main() -> None:
             new = copy(remote, local, "daily_bars", bars, "WHERE date > %s AND NOT (ticker = ANY(%s))", (local_max, changed))
             print(f"daily_bars: +{new} rows after {local_max}")
     compute_rs(local)
+    refresh_high_closes(local)
     rated = one(local.execute("SELECT MAX(date) FROM rs_ratings"))[0]
     print(f"\nLocal is up to date with production through {rated}")
 

@@ -40,6 +40,10 @@ _Avoid_: Driver, trigger
 The state of the S&P 500 trend: Uptrend, Under pressure or Downtrend.
 _Avoid_: Market trend, regime, market status
 
+**2-year high close**:
+A ticker's highest daily close in the stored history, which goes back about 2 years, with its date. In chat it answers "all-time high" and "past year high" questions, and the reply says it covers only the last 2 years.
+_Avoid_: All-time high, ATH
+
 **Chat allowance**:
 The messages a visitor can still send the AI Researcher today: 5 per visitor per UTC day, within a site-wide cap of 100. Only Leaders can be chatted about.
 _Avoid_: Quota, credits

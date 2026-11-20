@@ -55,7 +55,7 @@ The news comes only from the Blurb run. It fetches the Leader's last 30 days of 
    uv run python -m app.blurbs --ticker NVDA                             # one Leader
    uv run --env-file .env.production python -m app.blurbs               # publish to the live site
    ```
-   Rerunning on the same rated date replaces that date's Blurbs. A Leader that fails is skipped and listed at the end. The run only exits with an error if more than 10 fail. The panel shows a Blurb for 7 days after its rated date.
+   Rerunning on the same rated date replaces that date's Blurbs. A Leader that fails is skipped and listed at the end. The run only exits with an error if more than 10 fail. The panel shows each Leader's latest Blurb, with its date, until the next run replaces it.
 
 **Don't start a Blurb run while the Daily refresh may be running: 07:00–07:45 or 13:00–13:45 UTC, Tuesday to Saturday.** Both use the same Massive key, which allows 5 calls a minute in total, so running them together slows both down and can push the refresh past its 30-minute timeout. The Blurb run refuses to start in those windows. Pass `--force` if you know the refresh has already finished.
 

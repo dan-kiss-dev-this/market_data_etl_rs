@@ -86,7 +86,7 @@ test('says there is no current Blurb for a company that is not a Leader', async 
   renderWithQueries(<AiResearcher ticker="MRNA" name="Moderna Inc." />)
   fireEvent.click(screen.getByRole('button', { name: 'AI Researcher' }))
 
-  expect(await screen.findByText('No current Blurb. Blurbs cover the top 50 by RS rating.')).toBeTruthy()
+  expect(await screen.findByText('No Blurb yet. Blurbs cover the top 50 by RS rating.')).toBeTruthy()
   expect(screen.getByText('Offline')).toBeTruthy()
   expect(screen.getByText('Chat only works for Leaders, the top 50 companies by RS rating.')).toBeTruthy()
   expect((screen.getByRole('textbox', { name: 'Message' }) as HTMLInputElement).disabled).toBe(true)

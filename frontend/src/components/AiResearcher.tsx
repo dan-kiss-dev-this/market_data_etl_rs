@@ -82,7 +82,7 @@ export default function AiResearcher({ ticker, name }: Props) {
             </p>
             {isPending && <p className="chat-bubble">Looking up {name}…</p>}
             {isError && <p className="chat-bubble">Couldn't load the Blurb right now. Try again later.</p>}
-            {data === null && <p className="chat-bubble">No current Blurb. Blurbs cover the top 50 by RS rating.</p>}
+            {data === null && <p className="chat-bubble">No Blurb yet. Blurbs cover the top 50 by RS rating.</p>}
             {data && (
               <>
                 {data.market && <MarketBadge market={data.market} />}

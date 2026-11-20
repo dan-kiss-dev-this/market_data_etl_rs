@@ -194,8 +194,10 @@ def test_ticker_news_keeps_focused_articles_about_the_ticker_oldest_first():
     assert news[0] == {"date": "2026-11-05", "title": "T5", "publisher": "P", "url": "u5", "sentiment": "positive", "insight": "why"}
 
 
-def test_blurb_is_current_for_7_days_after_its_rated_date():
-    from app.blurbs import is_current
+def test_latest_blurb_is_kept_however_old():
+    row = {"ticker": "NVDA", "date": "2026-09-01", "blurb": {}, "headlines": [], "market": None}
+    assert blurbs.current_blurb(FakeConn(row), "NVDA") == row
 
-    assert is_current("2026-11-05", TODAY)
-    assert not is_current("2026-11-04", TODAY)
+
+def test_no_blurb_gives_none():
+    assert blurbs.current_blurb(FakeConn(None), "NVDA") is None

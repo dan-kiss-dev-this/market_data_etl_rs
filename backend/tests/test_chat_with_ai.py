@@ -208,7 +208,7 @@ def api(monkeypatch):
 
     monkeypatch.setattr(main, "ANTHROPIC_API_KEY", "test")
     monkeypatch.setattr(main, "pool", lambda: Pool())
-    monkeypatch.setattr(main, "current_blurb", lambda conn, ticker, today: BLURB if ticker == "NVDA" else None)
+    monkeypatch.setattr(main, "current_blurb", lambda conn, ticker: BLURB if ticker == "NVDA" else None)
     monkeypatch.setattr(chat_with_ai, "leader_context", lambda conn, blurb: "ctx")
     monkeypatch.setattr(chat_with_ai, "take_message", take)
     monkeypatch.setattr(chat_with_ai, "refund", refund)

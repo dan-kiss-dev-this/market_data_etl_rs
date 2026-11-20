@@ -13,8 +13,8 @@ Once a week the owner runs a local **Blurb run**. For each of the 50 Leaders it 
 2. As a trader, I want to see the Market direction next to each Blurb, so that I don't act on a strong setup in a Downtrend.
 3. As a trader, I want the Catalyst to cite up to 3 linked headlines, so that I can check the source.
 4. As a trader, I want "No clear Catalyst in recent news" instead of a guess, so that I can trust what's written.
-5. As a trader, I want each Blurb to show its date, and the panel to stop showing a Blurb once it's more than 7 days old, so that I never mistake old research for current.
-6. As a trader, I want a clear "No current Blurb. Blurbs cover the top 50 by RS rating." for companies that aren't Leaders.
+5. As a trader, I want each Blurb to show its date, so that I never mistake old research for current. The panel keeps showing the latest Blurb until a new Blurb run replaces it (changed 2026-11-20; it used to hide Blurbs more than 7 days old).
+6. As a trader, I want a clear "No Blurb yet. Blurbs cover the top 50 by RS rating." for companies that aren't Leaders.
 7. As the owner, I want to start the Blurb run myself, locally, against whatever `DATABASE_URL` is set, so that I control the cost and can test it on local Postgres.
 8. As the owner, I want the Blurb run to refuse to start during the Daily refresh windows unless I pass `--force`, with a red message saying why, so that the two runs don't compete for the Massive rate limit.
 9. As the owner, I want a warning when the rated date is more than 3 trading days old, so that I notice a broken Daily refresh.
@@ -40,12 +40,12 @@ Once a week the owner runs a local **Blurb run**. For each of the 50 Leaders it 
   - `blurbs (ticker, date)` holds the Blurb, the cited headlines and the model, and is upserted on rerun
   - `market_directions (date)` holds that day's market snapshot
 - **Startup guard:** 07:00–07:45 and 13:00–13:45 UTC, Tue–Sat, which match the Daily refresh schedule in `.github/workflows/daily-refresh.yml`.
-- **Endpoint:** `GET /api/rs/{ticker}/blurb` returns the latest Blurb if it is at most 7 days old, with the latest Market direction, which the Daily refresh saves every trading day (changed 2026-11-13; it used to be the Blurb's date's). Otherwise it returns 404.
+- **Endpoint:** `GET /api/rs/{ticker}/blurb` returns the latest Blurb, however old (changed 2026-11-20; it used to be only if at most 7 days old), with the latest Market direction, which the Daily refresh saves every trading day (changed 2026-11-13; it used to be the Blurb's date's). Otherwise it returns 404.
 
 ## Testing Decisions
 - `market_direction` is tested on made-up uptrend, downtrend and choppy series.
 - The Blurb run is tested with Massive and Anthropic mocked: Leader selection, the 90-day description refresh, skipping failed Leaders and the more-than-10 rule, the guard windows and `--force`, and reruns replacing Blurbs.
-- The endpoint is tested for a fresh Blurb, a Blurb more than 7 days old, and a missing one. The panel is tested for loading, success and 404.
+- The endpoint is tested for an old Blurb and a missing one. The panel is tested for loading, success and 404.
 
 ## Out of Scope
 - Chatting with the AI Researcher. The input stays disabled.

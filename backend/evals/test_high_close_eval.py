@@ -1,4 +1,3 @@
-from datetime import date
 
 import pytest
 
@@ -10,7 +9,7 @@ from evals.high_close import CASES, Case, check
 
 def context_for(conn, ticker: str) -> str:
     """The real chat context when the ticker has a current Blurb, else just its name."""
-    blurb = current_blurb(conn, ticker, date.today())
+    blurb = current_blurb(conn, ticker)
     return chat_with_ai.leader_context(conn, blurb) if blurb else f"Company: {ticker}"
 
 

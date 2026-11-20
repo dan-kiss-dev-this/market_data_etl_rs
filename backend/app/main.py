@@ -88,12 +88,12 @@ def rs_blurb(ticker: str):
     ticker = ticker.upper()
     try:
         with pool().connection() as conn:
-            blurb = current_blurb(conn, ticker, date.today())
+            blurb = current_blurb(conn, ticker)
     # The Blurb run creates the tables, so a database it hasn't run against has none yet
     except psycopg.errors.UndefinedTable:
         blurb = None
     if blurb is None:
-        raise HTTPException(404, f"No current Blurb for {ticker}")
+        raise HTTPException(404, f"No Blurb for {ticker}")
     return blurb
 
 def chat_day() -> date:
@@ -123,7 +123,7 @@ def rs_chat(ticker: str, conversation: Conversation, request: Request):
     visitor = chat_with_ai.visitor_key(request, day)
     try:
         with pool().connection() as conn:
-            blurb = current_blurb(conn, ticker, date.today())
+            blurb = current_blurb(conn, ticker)
             if blurb is None:
                 raise HTTPException(404, "Chat only works for Leaders")
             context = chat_with_ai.leader_context(conn, blurb)

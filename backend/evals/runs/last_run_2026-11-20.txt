@@ -1,0 +1,16 @@
+============================= test session starts ==============================
+platform darwin -- Python 3.11.2, pytest-9.2.0, pluggy-1.7.0 -- /Users/danielkiss/Code/market_data_etl_rs/backend/.venv/bin/python3
+cachedir: .pytest_cache
+rootdir: /Users/danielkiss/Code/market_data_etl_rs/backend
+configfile: pyproject.toml
+plugins: anyio-4.15.1
+collecting ... collected 6 items
+
+evals/test_high_close_eval.py::test_high_close[all-time] PASSED          [ 16%]
+evals/test_high_close_eval.py::test_high_close[past-year] PASSED         [ 33%]
+evals/test_high_close_eval.py::test_high_close[past-2-years] PASSED      [ 50%]
+evals/test_high_close_eval.py::test_high_close[other-ticker] PASSED      [ 66%]
+evals/test_high_close_eval.py::test_high_close[no-row] PASSED            [ 83%]
+evals/test_high_close_eval.py::test_high_close[unrelated] PASSED         [100%]
+
+============================== 6 passed in 13.91s ==============================

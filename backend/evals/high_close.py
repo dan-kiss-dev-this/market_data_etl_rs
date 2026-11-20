@@ -1,21 +1,10 @@
-"""Eval for the get_high_close_past_2_years tool: does the AI Researcher call it for all-time, past-year
-and past-2-years high questions (and only then), and answer with the stored price, its date and the
-2-year caveat?
-
-Runs live against real Haiku and DATABASE_URL, so the expected prices are read from
-high_close_past_2_years at run time. Run from backend/ by hand (not in CI; a run costs about 1¢):
-    uv run python -m evals.high_close_eval
-"""
+"""Cases and grader for the get_high_close_past_2_years eval: does the AI Researcher call the tool for
+all-time, past-year and past-2-years high questions (and only then), and answer with the stored price,
+its date and the 2-year caveat? The live run is evals/test_high_close_eval.py."""
 
 import re
-import sys
 from dataclasses import dataclass
 from datetime import date
-
-from app import chat_with_ai
-from app.blurbs import current_blurb
-from app.chat_with_ai import Message
-from app.db import connect
 
 TOOL = "get_high_close_past_2_years"
 CAVEAT = re.compile(r"\b(2|two)[- ]years?\b|\b24 months\b", re.IGNORECASE)
@@ -53,12 +42,6 @@ def price_forms(close: float) -> list[str]:
     return [f"${close:,.2f}", f"${close:.2f}"]
 
 
-def context_for(conn, ticker: str) -> str:
-    """The real chat context when the ticker has a current Blurb, else just its name."""
-    blurb = current_blurb(conn, ticker, date.today())
-    return chat_with_ai.leader_context(conn, blurb) if blurb else f"Company: {ticker}"
-
-
 def check(case: Case, text: str, calls: list[dict], row: dict | None) -> str | None:
     """Why the case failed, or None if it passed."""
     tool_calls = [c for c in calls if c["name"] == TOOL]
@@ -80,39 +63,3 @@ def check(case: Case, text: str, calls: list[dict], row: dict | None) -> str | N
     if not CAVEAT.search(text):
         return "doesn't say it's the high of the last 2 years"
     return None
-
-
-def run(case: Case, conn, ai) -> str | None:
-    calls: list[dict] = []
-    real = chat_with_ai.run_tool
-
-    def recording(name: str, tool_input: dict) -> dict:
-        calls.append({"name": name, "input": tool_input})
-        return real(name, tool_input)
-
-    chat_with_ai.run_tool = recording
-    try:
-        text = "".join(chat_with_ai.reply(ai, context_for(conn, case.ticker), [Message(role="user", content=case.question)]))
-    finally:
-        chat_with_ai.run_tool = real
-    row = chat_with_ai.high_close(conn, case.asks_about or case.ticker)
-    failure = check(case, text, calls, row)
-    if failure:
-        print(f"    reply: {text!r}")
-    return failure
-
-
-def main() -> None:
-    conn = connect()
-    ai = chat_with_ai.ai_client()
-    failed = 0
-    for case in CASES:
-        failure = run(case, conn, ai)
-        print(f"{'FAIL' if failure else 'PASS'} {case.name}" + (f": {failure}" if failure else ""))
-        failed += failure is not None
-    print(f"\n{len(CASES) - failed}/{len(CASES)} passed")
-    sys.exit(1 if failed else 0)
-
-
-if __name__ == "__main__":
-    main()

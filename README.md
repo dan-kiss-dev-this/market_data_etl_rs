@@ -102,6 +102,14 @@ The schema lives in code, in `backend/app/db.py`. Never change Supabase's tables
 3. Push to `main`. Once the tests pass, Render deploys, and the API applies the change to Supabase as it starts. That's the only time production's schema changes. All pending migrations run in one transaction, so one that fails changes nothing.
 4. Run `pull_prod` to refresh dev's data. New tables are copied automatically; add one to `SKIPPED` if it shouldn't be.
 
+After the deploy creates a new table, turn on Row-Level Security for it:
+
+```bash
+uv run --env-file .env.production python -m app.enable_rls
+```
+
+Supabase puts every `public` table on its REST API, which anyone with the project's public anon key can use. RLS with no policies shuts that API out. The site doesn't use that API, since the browser only calls `/api/...` on Render. The backend, the Daily refresh and `pull_prod` connect as the tables' owner, which RLS doesn't apply to. The script is safe to rerun and only changes tables that don't have RLS yet. Adding a column keeps RLS on. Never use `FORCE ROW LEVEL SECURITY`, which would lock the backend out too.
+
 Until the deploy finishes, the Daily refresh and the Blurb run stop with "The database is behind this code" instead of changing Supabase themselves. The next refresh picks it up.
 
 A new column on an existing table is empty for existing rows. Filling it in for past days, from Massive or otherwise, is a separate job you run on purpose. Before any change that removes or rewrites data, which you'd do by hand, back up production first (from `backend/`):

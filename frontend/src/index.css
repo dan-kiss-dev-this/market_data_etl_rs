@@ -585,6 +585,11 @@ select,
   font-size: 12px;
   color: var(--text-muted);
 }
+.market-definition {
+  margin: 4px 0 0;
+  font-size: 12px;
+  color: var(--text-muted);
+}
 .blurb-sources {
   margin: 0;
   padding-left: 18px;

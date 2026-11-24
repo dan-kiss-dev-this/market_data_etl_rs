@@ -40,6 +40,18 @@ _Avoid_: Driver, trigger
 The state of the S&P 500 trend: Uptrend, Under pressure or Downtrend.
 _Avoid_: Market trend, regime, market status
 
+**Uptrend**:
+The Market direction when the S&P 500 closed above its 50-day average and the 50-day is above the 200-day.
+_Avoid_: Bull market, confirmed uptrend
+
+**Under pressure**:
+The Market direction when the S&P 500 is neither in an Uptrend nor a Downtrend, such as below its 50-day average, or below its 200-day average while the 50-day is still rising.
+_Avoid_: Choppy, correction, sideways
+
+**Downtrend**:
+The Market direction when the S&P 500 closed below its 200-day average and its 50-day average is not rising, compared with 10 trading days ago.
+_Avoid_: Bear market, correction
+
 **2-year high close**:
 A ticker's highest daily close in the stored history, which goes back about 2 years, with its date. In chat it answers "all-time high" and "past year high" questions, and the reply says it covers only the last 2 years.
 _Avoid_: All-time high, ATH

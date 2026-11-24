@@ -71,6 +71,28 @@ test('shows the Blurb with the Market direction and cited sources', async () => 
   expect((screen.getByRole('textbox', { name: 'Message' }) as HTMLInputElement).disabled).toBe(false)
 })
 
+test('ends the Blurb with a definition of the Market direction', async () => {
+  vi.spyOn(api, 'blurb').mockResolvedValue(blurb)
+  renderWithQueries(<AiResearcher ticker="NVDA" name="Nvidia Corp." />)
+  fireEvent.click(screen.getByRole('button', { name: 'AI Researcher' }))
+
+  await screen.findByText('GPUs for AI data centers.')
+  const definition = screen.getByRole('status').querySelector('.market-definition')
+  expect(definition?.textContent).toBe(
+    'Under pressure: the S&P 500 is neither in an Uptrend nor a Downtrend, for example below its 50-day average, or below its 200-day average while the 50-day is still rising.',
+  )
+  expect(screen.getByRole('list', { name: 'Sources' }).compareDocumentPosition(definition!)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
+})
+
+test('leaves out the definition when there is no Market direction', async () => {
+  vi.spyOn(api, 'blurb').mockResolvedValue({ ...blurb, market: null })
+  renderWithQueries(<AiResearcher ticker="NVDA" name="Nvidia Corp." />)
+  fireEvent.click(screen.getByRole('button', { name: 'AI Researcher' }))
+
+  await screen.findByText('GPUs for AI data centers.')
+  expect(screen.getByRole('status').querySelector('.market-definition')).toBeNull()
+})
+
 test('shows What they sell last, after Risks', async () => {
   vi.spyOn(api, 'blurb').mockResolvedValue(blurb)
   renderWithQueries(<AiResearcher ticker="NVDA" name="Nvidia Corp." />)

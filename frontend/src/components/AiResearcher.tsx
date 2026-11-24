@@ -20,6 +20,14 @@ const MARKET_CLASS: Record<MarketDirection['status'], string> = {
   Downtrend: 'market-down',
 }
 
+// Matches the rule in backend/app/market.py and the GLOSSARY.md entries
+const MARKET_DEFINITION: Record<MarketDirection['status'], string> = {
+  Uptrend: 'the S&P 500 closed above its 50-day average, and the 50-day is above the 200-day.',
+  'Under pressure':
+    'the S&P 500 is neither in an Uptrend nor a Downtrend, for example below its 50-day average, or below its 200-day average while the 50-day is still rising.',
+  Downtrend: 'the S&P 500 closed below its 200-day average, and the 50-day is not rising.',
+}
+
 function ChatIcon() {
   return (
     <svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true">
@@ -106,6 +114,11 @@ export default function AiResearcher({ ticker, name }: Props) {
                       </li>
                     ))}
                   </ul>
+                )}
+                {data.market && (
+                  <p className="market-definition">
+                    <strong>{data.market.status}</strong>: {MARKET_DEFINITION[data.market.status]}
+                  </p>
                 )}
               </>
             )}

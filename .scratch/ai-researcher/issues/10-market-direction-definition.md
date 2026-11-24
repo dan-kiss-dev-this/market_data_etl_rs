@@ -13,3 +13,5 @@ The panel shows "S&P 500 on {date}: Under pressure" but never says what that mea
 
 ## Comments
 - vitest 48/48 passing, tsc clean, 2026-11-24.
+
+- Its definitions were replaced by the Strong, Normal and Shaky market wording in 11-market-condition.md, 2026-11-24.

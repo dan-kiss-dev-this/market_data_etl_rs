@@ -1,19 +1,26 @@
-"""Market direction: the S&P 500 trend from the benchmark's 50- and 200-day moving averages,
-plus breadth (the share of companies above their own 50-day average), shown for context only."""
+"""Market condition: Strong, Normal or Shaky market, from the benchmark's 50- and 200-day moving averages,
+plus breadth (the share of companies above their own 50-day average), shown for context only.
 
+Run with --backfill to recompute every stored market_directions row with the current rule."""
+
+import argparse
 from collections.abc import Sequence
 
 import psycopg
 from psycopg.types.json import Jsonb
 
 from app.config import BENCHMARK
-from app.db import Row
+from app.db import Row, connect
 
 SHORT, LONG = 50, 200  # trading days
 SLOPE_LOOKBACK = 10  # the 50-day average is rising if it's above its value this many days ago
+LONG_SLOPE_LOOKBACK = 20  # the same for the 200-day average
+CROSSING_WINDOW = 20  # trading days in which failed 50-day crossings are counted
+FAILED_CROSSINGS = 2  # this many while below the 50-day makes it a Shaky market
+MIN_BARS = LONG + LONG_SLOPE_LOOKBACK
 MONTH, QUARTER = 21, 63
 
-UPTREND, UNDER_PRESSURE, DOWNTREND = "Uptrend", "Under pressure", "Downtrend"
+STRONG, NORMAL, SHAKY = "Strong market", "Normal market", "Shaky market"
 
 
 def moving_average(closes: Sequence[float], n: int, end: int | None = None) -> float | None:
@@ -24,28 +31,39 @@ def moving_average(closes: Sequence[float], n: int, end: int | None = None) -> f
     return sum(closes[end - n : end]) / n
 
 
-def status(close: float, ma50: float, ma200: float, ma50_rising: bool) -> str:
-    if close > ma50 > ma200:
-        return UPTREND
-    if close < ma200 and not ma50_rising:
-        return DOWNTREND
-    return UNDER_PRESSURE
+def failed_crossings(closes: Sequence[float]) -> int:
+    """Times in the last CROSSING_WINDOW trading days a close above the 50-day was followed by one below it."""
+    n = len(closes)
+    above = [closes[end - 1] > moving_average(closes, SHORT, end) for end in range(n - CROSSING_WINDOW, n + 1)]
+    return sum(prev and not now for prev, now in zip(above, above[1:]))
+
+
+def status(close: float, ma50: float, ma200: float, ma50_rising: bool, ma200_rising: bool, failed: int) -> str:
+    if close < ma200 or (close < ma50 and (not ma50_rising or failed >= FAILED_CROSSINGS)):
+        return SHAKY
+    if close > ma50 > ma200 and ma50_rising and ma200_rising:
+        return STRONG
+    return NORMAL
 
 
 def direction(closes: Sequence[float]) -> dict | None:
-    """Market direction from benchmark closes ending on the rated date; None without 200 bars."""
-    if len(closes) < LONG:
+    """Market condition from benchmark closes ending on the rated date; None without MIN_BARS bars."""
+    if len(closes) < MIN_BARS:
         return None
     close = closes[-1]
     ma50 = moving_average(closes, SHORT)
     ma200 = moving_average(closes, LONG)
     ma50_rising = ma50 > moving_average(closes, SHORT, len(closes) - SLOPE_LOOKBACK)
+    ma200_rising = ma200 > moving_average(closes, LONG, len(closes) - LONG_SLOPE_LOOKBACK)
+    failed = failed_crossings(closes)
     return {
-        "status": status(close, ma50, ma200, ma50_rising),
+        "status": status(close, ma50, ma200, ma50_rising, ma200_rising, failed),
         "close": close,
         "ma50": ma50,
         "ma200": ma200,
         "ma50_rising": ma50_rising,
+        "ma200_rising": ma200_rising,
+        "failed_50_day_crossings": failed,
         "ret_1m": close / closes[-1 - MONTH] - 1,
         "ret_3m": close / closes[-1 - QUARTER] - 1,
     }
@@ -65,10 +83,10 @@ def breadth(closes_by_ticker: dict[str, Sequence[float]]) -> float | None:
 
 
 def market_direction(conn: psycopg.Connection[Row], date: str) -> dict | None:
-    """Market direction as of date, from daily_bars; None if the benchmark has under 200 bars."""
+    """Market condition as of date, from daily_bars; None if the benchmark has under MIN_BARS bars."""
     bench = conn.execute(
         "SELECT date, close FROM daily_bars WHERE ticker = %s AND date <= %s ORDER BY date DESC LIMIT %s",
-        (BENCHMARK, date, LONG),
+        (BENCHMARK, date, MIN_BARS),
     ).fetchall()[::-1]
     result = direction([r["close"] for r in bench])
     if result is None:
@@ -94,3 +112,32 @@ def save_market(conn: psycopg.Connection[Row], market: dict) -> None:
             "INSERT INTO market_directions VALUES (%s, %s) ON CONFLICT (date) DO UPDATE SET data = EXCLUDED.data",
             (market["date"], Jsonb(market)),
         )
+
+
+def backfill(conn: psycopg.Connection[Row]) -> None:
+    """Recompute every stored date with the current rule; delete dates without enough history."""
+    dates = [r["date"] for r in conn.execute("SELECT date FROM market_directions ORDER BY date").fetchall()]
+    deleted = 0
+    for date in dates:
+        market = market_direction(conn, date)
+        if market is None:
+            with conn.transaction():
+                conn.execute("DELETE FROM market_directions WHERE date = %s", (date,))
+            deleted += 1
+        else:
+            save_market(conn, market)
+    print(f"Recomputed {len(dates) - deleted} Market conditions, deleted {deleted} without {MIN_BARS} bars")
+
+
+def main() -> None:
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument("--backfill", action="store_true", help="recompute every stored market_directions row")
+    args = parser.parse_args()
+    if args.backfill:
+        backfill(connect())
+    else:
+        parser.print_help()
+
+
+if __name__ == "__main__":
+    main()

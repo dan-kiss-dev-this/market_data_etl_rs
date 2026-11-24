@@ -1,5 +1,5 @@
 """ChatWithAI: answers follow-up questions about a Leader in the AI Researcher panel, from its
-stored Blurb, RS data, description and the Market direction, within daily message limits.
+stored Blurb, RS data, description and the Market condition, within daily message limits.
 
 Visitors are anonymous for now. visitor_key is the one place to change to key the limits on a
 logged-in (Supabase Auth) user instead.
@@ -38,7 +38,7 @@ SYSTEM_PROMPT = """You are the AI Researcher on a momentum trading site. The sit
 the best momentum stocks combine high relative strength with innovative new products and leadership of \
 their category. A trader is asking follow-up questions about one Leader (one of the 50 highest RS-rated \
 S&P 500 companies). Below are its Blurb, RS data, description, the headlines the Blurb's Catalyst cites \
-and the Market direction.
+and the Market condition.
 
 Answer in a few plain sentences. You may use general knowledge about the company, its products and \
 its rivals, but take recent events only from the context: if the context doesn't cover something \
@@ -195,7 +195,7 @@ Blurb as of {blurb['date']}:
 
 RS data as of {blurb['date']}: {rs}
 
-Market direction: {describe_market(blurb['market'])}
+Market condition: {describe_market(blurb['market'])}
 
 Headlines the Catalyst cites:
 {headlines or 'None.'}"""

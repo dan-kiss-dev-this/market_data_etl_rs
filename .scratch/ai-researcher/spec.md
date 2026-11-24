@@ -6,11 +6,11 @@ Status: ready-for-agent
 The AI Researcher panel is a placeholder that says "Service Not Available". The site is built for momentum trading: high-RS stocks with new products that lead their category. A generic company description doesn't help with that. The owner wants the panel to explain, in a few lines, why a Leader is leading, at close to no cost.
 
 ## Solution
-Once a week the owner runs a local **Blurb run**. For each of the 50 Leaders it collects the company description and recent news from Massive, adds the Leader's RS data and the Market direction from Postgres, and asks Claude Haiku 5.5 for a short **Blurb** with five fixed fields. Blurbs are saved in Postgres. When the panel opens, it reads the saved Blurb, so there's never an AI call per click. A run costs about $0.03. Speed is limited by the Massive free plan's 5 calls a minute.
+Once a week the owner runs a local **Blurb run**. For each of the 50 Leaders it collects the company description and recent news from Massive, adds the Leader's RS data and the Market condition from Postgres, and asks Claude Haiku 5.5 for a short **Blurb** with five fixed fields. Blurbs are saved in Postgres. When the panel opens, it reads the saved Blurb, so there's never an AI call per click. A run costs about $0.03. Speed is limited by the Massive free plan's 5 calls a minute.
 
 ## User Stories
 1. As a trader, I want the panel to show why a Leader is leading (its Catalyst, category position and momentum), so that I can judge the setup quickly.
-2. As a trader, I want to see the Market direction next to each Blurb, so that I don't act on a strong setup in a Downtrend.
+2. As a trader, I want to see the Market condition next to each Blurb, so that I don't act on a strong setup in a Shaky market.
 3. As a trader, I want the Catalyst to cite up to 3 linked headlines, so that I can check the source.
 4. As a trader, I want "No clear Catalyst in recent news" instead of a guess, so that I can trust what's written.
 5. As a trader, I want each Blurb to show its date, so that I never mistake old research for current. The panel keeps showing the latest Blurb until a new Blurb run replaces it (changed 2026-11-20; it used to hide Blurbs more than 7 days old).
@@ -27,24 +27,25 @@ Once a week the owner runs a local **Blurb run**. For each of the 50 Leaders it 
   - the company description from Massive `/v3/reference/tickers/{t}`, saved on `companies` and re-fetched after 90 days
   - RS rating, 1-week change, RS new high, 3-month and 12-month returns, and rank within its sector
   - up to 10 Massive news headlines from the 30 days ending on the rated date
-  - the Market direction
-- **Market direction** is computed from SPY closes in `daily_bars`:
-  - Uptrend if close > 50-day average > 200-day average
-  - Downtrend if close < 200-day average and the 50-day average is falling (compared with 10 trading days ago)
-  - Under pressure otherwise
+  - the Market condition
+- **Market condition** (renamed from Market direction, changed 2026-11-24; it used to be Uptrend, Under pressure or Downtrend from close vs the 50- and 200-day averages and the 50-day slope) is computed from SPY closes in `daily_bars`, checked in this order:
+  1. Shaky market if the close is below the 200-day average, or below the 50-day average while the 50-day is falling (compared with 10 trading days ago) or has had at least 2 failed crossings in the last 20 trading days. A failed crossing is a close above the 50-day followed by a close back below it.
+  2. Strong market if close > 50-day > 200-day, the 50-day is rising (vs 10 trading days ago) and the 200-day is rising (vs 20 trading days ago)
+  3. Normal market otherwise
 
-  Breadth (the % of companies above their own 50-day average) is shown for information only.
-  The panel ends the Blurb with a one-line definition of the current Market direction (added 2026-11-24).
+  It needs 220 SPY bars. Each saved row also has `ma200_rising` and `failed_50_day_crossings`, which go into the Blurb and chat prompts. Breadth (the % of companies above their own 50-day average) is shown for information only.
+  The panel ends the Blurb with a one-line definition of the current Market condition (added 2026-11-24).
+- **Backfill after a rule change:** `cd backend && uv run --env-file .env.production python -m app.market --backfill` recomputes every stored `market_directions` row with the current rule, and deletes rows without 220 SPY bars before them. Run it once after deploying a rule change. Saved Blurbs may still name the old labels, so **do a Blurb run (`uv run --env-file .env.production python -m app.blurbs`) after the backfill to regenerate them.**
 - **Model:** `claude-haiku-5-5` at low effort. It returns structured output with the fields `what_they_sell`, `catalyst`, `catalyst_sources`, `category_position`, `momentum`, `risks`. It may use general knowledge for What they sell and Category position. The Catalyst must come only from the numbered headlines it was given.
 - **Panel order:** Catalyst, Category position, Momentum, Risks, What they sell (changed 2026-11-14; What they sell used to come first). The model's output order is unchanged.
 - **Storage:**
   - `blurbs (ticker, date)` holds the Blurb, the cited headlines and the model, and is upserted on rerun
   - `market_directions (date)` holds that day's market snapshot
 - **Startup guard:** 07:00–07:45 and 13:00–13:45 UTC, Tue–Sat, which match the Daily refresh schedule in `.github/workflows/daily-refresh.yml`.
-- **Endpoint:** `GET /api/rs/{ticker}/blurb` returns the latest Blurb, however old (changed 2026-11-20; it used to be only if at most 7 days old), with the latest Market direction, which the Daily refresh saves every trading day (changed 2026-11-13; it used to be the Blurb's date's). Otherwise it returns 404.
+- **Endpoint:** `GET /api/rs/{ticker}/blurb` returns the latest Blurb, however old (changed 2026-11-20; it used to be only if at most 7 days old), with the latest Market condition, which the Daily refresh saves every trading day (changed 2026-11-13; it used to be the Blurb's date's). Otherwise it returns 404.
 
 ## Testing Decisions
-- `market_direction` is tested on made-up uptrend, downtrend and choppy series.
+- `market.direction` is tested on made-up series for each branch of the rule, and `backfill` on a fake connection.
 - The Blurb run is tested with Massive and Anthropic mocked: Leader selection, the 90-day description refresh, skipping failed Leaders and the more-than-10 rule, the guard windows and `--force`, and reruns replacing Blurbs.
 - The endpoint is tested for an old Blurb and a missing one. The panel is tested for loading, success and 404.
 
@@ -52,7 +53,7 @@ Once a week the owner runs a local **Blurb run**. For each of the 50 Leaders it 
 - Chatting with the AI Researcher. The input stays disabled.
 - Scheduling the Blurb run, or running it in GitHub Actions.
 - Blurbs for companies that aren't Leaders.
-- A quantitative Market direction report (see `docs/todo-ideas.md`).
+- A quantitative Market condition report (see `docs/todo-ideas.md`).
 
 ## Further Notes
 Massive's news endpoint needs checking against the free plan before slice 03 is built.

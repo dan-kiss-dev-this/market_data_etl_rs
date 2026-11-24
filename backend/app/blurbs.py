@@ -1,5 +1,5 @@
 """Blurb run: write a Blurb for each Leader explaining why it's leading, from its company
-description, RS data, recent news and the Market direction. Run by hand, about weekly.
+description, RS data, recent news and the Market condition. Run by hand, about weekly.
 
 Run from backend/:  uv run python -m app.blurbs [--limit N] [--ticker T] [--force]
 Writes to whatever DATABASE_URL points at; set it to the production database to publish.
@@ -18,7 +18,7 @@ from pydantic import BaseModel, ValidationError
 from app.config import ANTHROPIC_API_KEY, BLURB_MODEL, LEADER_COUNT
 from app.db import Row, connect, ensure_schema, one
 from app.etl import weekdays
-from app.market import market_direction, save_market
+from app.market import CROSSING_WINDOW, market_direction, save_market
 from app.massive import MassiveClient
 
 # The Daily refresh starts at 07:00 and 13:00 UTC, Tuesday to Saturday, and shares the
@@ -40,7 +40,7 @@ best momentum stocks combine high relative strength with innovative new products
 their category.
 
 You get the company's description, its RS data, numbered news headlines from the last 30 days with \
-Massive's per-company insight on each, and the Market direction.
+Massive's per-company insight on each, and the Market condition.
 
 Write each field in one or two plain sentences:
 - what_they_sell: what the company sells and to whom. You may use general knowledge.
@@ -54,9 +54,9 @@ no clear Catalyst.
 analog chips or pharmaceutical distribution), and against which rivals. Use general knowledge, not \
 the RS data: a sector rank is not a category position.
 - momentum: what the RS data says about the strength and freshness of the move, including its rank \
-in its sector. The site already shows the Market direction, so don't restate it or add a general \
+in its sector. The site already shows the Market condition, so don't restate it or add a general \
 warning about it. Mention it only when the stock is clearly acting differently from the market, \
-such as an RS new high while the market is Under pressure or in a Downtrend.
+such as an RS new high in a Shaky market.
 - risks: the main thing that could break the thesis.
 
 Be concrete and plain. No hype, no advice to buy or sell."""
@@ -132,9 +132,15 @@ def describe_market(market: dict | None) -> str:
         return "Not available."
     side = "above" if market["close"] > market["ma50"] else "below"
     trend = "rising" if market["ma50_rising"] else "falling"
+    side200 = "above" if market["close"] > market["ma200"] else "below"
+    trend200 = "rising" if market["ma200_rising"] else "falling"
+    failed = market["failed_50_day_crossings"]
     breadth = "n/a" if market["breadth"] is None else f"{market['breadth'] * 100:.0f}%"
     return (
-        f"{market['status']}. The S&P 500 is {side} its 50-day average, which is {trend}; "
+        f"{market['status']}. The S&P 500 is {side} its 50-day average, which is {trend}, "
+        f"and {side200} its 200-day average, which is {trend200}; "
+        f"it closed back below the 50-day after closing above it {failed} time{'' if failed == 1 else 's'} "
+        f"in the last {CROSSING_WINDOW} trading days; "
         f"1-month {pct(market['ret_1m'])}, 3-month {pct(market['ret_3m'])}; "
         f"{breadth} of S&P 500 companies are above their own 50-day average."
     )
@@ -155,7 +161,7 @@ rank {leader['sector_rank']} of {leader['sector_size']} in its sector
 - RS line at a new high: {'yes' if leader['rs_new_high'] else 'no'}
 - 3-month return {pct(leader['ret_3m'])}, 12-month return {pct(leader['ret_12m'])}
 
-Market direction: {describe_market(market)}
+Market condition: {describe_market(market)}
 
 Headlines from the 30 days to {rated}:
 {headlines or 'None.'}"""
@@ -203,8 +209,8 @@ def save_blurb(conn: psycopg.Connection[Row], ticker: str, rated: str, blurb: Bl
 
 
 def current_blurb(conn: psycopg.Connection[Row], ticker: str) -> dict | None:
-    """The ticker's latest Blurb, however old, with the latest Market direction, or None if it has none.
-    The Daily refresh saves a Market direction every trading day, so it's often newer than the Blurb."""
+    """The ticker's latest Blurb, however old, with the latest Market condition, or None if it has none.
+    The Daily refresh saves a Market condition every trading day, so it's often newer than the Blurb."""
     row = conn.execute(
         """SELECT b.ticker, b.date, b.blurb, b.headlines, m.data AS market
            FROM blurbs b
@@ -229,7 +235,7 @@ def run(
     market = market_direction(conn, rated)
     if market is not None:
         save_market(conn, market)
-    print(f"Market direction on {rated}: {market['status'] if market else 'not enough history'}")
+    print(f"Market condition on {rated}: {market['status'] if market else 'not enough history'}")
 
     since = (date.fromisoformat(rated) - timedelta(days=NEWS_DAYS)).isoformat()
     skipped = []

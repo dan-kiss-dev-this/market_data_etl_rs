@@ -62,8 +62,9 @@ LEADER = {
     "rs_score": 180.0, "ret_3m": 0.25, "ret_12m": 0.8, "rs_new_high": True,
     "sector_rank": 2, "sector_size": 68, "rating_change_1w": 3,
 }  # fmt: skip
-MARKET = {"date": RATED, "status": "Under pressure", "close": 749.9, "ma50": 765.0, "ma200": 731.0,
-          "ma50_rising": False, "ret_1m": -0.036, "ret_3m": -0.029, "breadth": 0.69}  # fmt: skip
+MARKET = {"date": RATED, "status": "Normal market", "close": 749.9, "ma50": 765.0, "ma200": 731.0,
+          "ma50_rising": False, "ma200_rising": True, "failed_50_day_crossings": 1,
+          "ret_1m": -0.036, "ret_3m": -0.029, "breadth": 0.69}  # fmt: skip
 
 
 def test_prompt_numbers_headlines_and_includes_rs_and_market():
@@ -72,7 +73,9 @@ def test_prompt_numbers_headlines_and_includes_rs_and_market():
     assert "[2] 2026-11-02" in prompt
     assert "RS rating 97 (1-week change: +3), rank 2 of 68" in prompt
     assert "3-month return +25.0%" in prompt
-    assert "Under pressure. The S&P 500 is below its 50-day average, which is falling" in prompt
+    assert "Market condition: Normal market. The S&P 500 is below its 50-day average, which is falling" in prompt
+    assert "above its 200-day average, which is rising" in prompt
+    assert "closed back below the 50-day after closing above it 1 time in the last 20 trading days" in prompt
     assert "69% of S&P 500 companies" in prompt
 
 
@@ -81,7 +84,7 @@ def test_prompt_without_news_market_or_history():
     prompt = blurbs.build_prompt(leader, RATED, "", [], None)
     assert "Description: Not available." in prompt
     assert "1-week change: n/a" in prompt
-    assert "Market direction: Not available." in prompt
+    assert "Market condition: Not available." in prompt
     assert "None." in prompt
 
 

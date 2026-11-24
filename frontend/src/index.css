@@ -566,13 +566,13 @@ select,
   font-weight: 600;
   border: 1px solid currentColor;
 }
-.market-up {
+.market-strong {
   color: var(--delta-up);
 }
-.market-pressure {
+.market-normal {
   color: var(--bolt);
 }
-.market-down {
+.market-shaky {
   color: var(--delta-down);
 }
 .blurb-label {

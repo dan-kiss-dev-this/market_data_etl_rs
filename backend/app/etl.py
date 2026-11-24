@@ -236,12 +236,12 @@ def compute_rs(conn: psycopg.Connection[Row]) -> None:
 
 
 def update_market_direction(conn: psycopg.Connection[Row]) -> None:
-    """Save the Market direction for the latest rated date, so the panel's is never older than the ratings."""
+    """Save the Market condition for the latest rated date, so the panel's is never older than the ratings."""
     rated = one(conn.execute("SELECT MAX(date) FROM rs_ratings"))[0]
     market = market_direction(conn, rated) if rated else None
     if market is not None:
         save_market(conn, market)
-    print(f"Market direction on {rated}: {market['status'] if market else 'not enough history'}")
+    print(f"Market condition on {rated}: {market['status'] if market else 'not enough history'}")
 
 
 def print_summary(conn: psycopg.Connection[Row]) -> None:

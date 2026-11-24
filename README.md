@@ -41,7 +41,7 @@ The ETL pulls daily S&P 500 prices from [Massive](https://massive.com) (formerly
 
 ## Blurb run (AI Researcher)
 
-The AI Researcher panel shows a **Blurb** for each Leader (the 50 highest-rated companies): why it's leading, written by Claude Haiku from the company's description, RS data, the last 30 days of Massive news and the Market direction. You run it by hand, about weekly. A full run costs about $0.03 in API fees and takes about 10 minutes because of Massive's rate limit. See `.scratch/ai-researcher/spec.md`.
+The AI Researcher panel shows a **Blurb** for each Leader (the 50 highest-rated companies): why it's leading, written by Claude Haiku from the company's description, RS data, the last 30 days of Massive news and the Market condition. You run it by hand, about weekly. A full run costs about $0.03 in API fees and takes about 10 minutes because of Massive's rate limit. See `.scratch/ai-researcher/spec.md`.
 
 The news comes only from the Blurb run. It fetches the Leader's last 30 days of Massive news, and Haiku picks up to 3 headlines that support the Catalyst, by number. The run saves those real headlines with the Blurb, and the panel lists them under Sources, linking to the articles. Haiku can't add a headline or a link of its own. Chat with AI answers from these saved headlines and makes no news call of its own, so its news is only as fresh as the latest Blurb run.
 
@@ -56,12 +56,16 @@ The news comes only from the Blurb run. It fetches the Leader's last 30 days of 
    uv run --env-file .env.production python -m app.blurbs               # publish to the live site
    ```
    Rerunning on the same rated date replaces that date's Blurbs. A Leader that fails is skipped and listed at the end. The run only exits with an error if more than 10 fail. The panel shows each Leader's latest Blurb, with its date, until the next run replaces it.
+3. After changing the Market condition rule, recompute the stored history, then do a full Blurb run so Blurbs don't name old labels:
+   ```bash
+   uv run --env-file .env.production python -m app.market --backfill
+   ```
 
 **Don't start a Blurb run while the Daily refresh may be running: 07:00–07:45 or 13:00–13:45 UTC, Tuesday to Saturday.** Both use the same Massive key, which allows 5 calls a minute in total, so running them together slows both down and can push the refresh past its 30-minute timeout. The Blurb run refuses to start in those windows. Pass `--force` if you know the refresh has already finished.
 
 ## Chat with AI
 
-The AI Researcher panel lets a visitor ask follow-up questions about a Leader. Claude Haiku answers only from stored data: the Leader's Blurb and the headlines it cites, RS data, company description and Market direction. It runs no web search and makes no Massive call per message, and replies stream in. See `.scratch/chat-with-ai/spec.md`.
+The AI Researcher panel lets a visitor ask follow-up questions about a Leader. Claude Haiku answers only from stored data: the Leader's Blurb and the headlines it cites, RS data, company description and Market condition. It runs no web search and makes no Massive call per message, and replies stream in. See `.scratch/chat-with-ai/spec.md`.
 - **2-year high close:** for an all-time high, or the highest close in the past year or 2 years, the AI calls its one tool, `get_high_close_past_2_years`. The tool reads `high_close_past_2_years`, which every Daily refresh rebuilds from `daily_bars`. The reply gives the price and the date, and says it's the 2-year high, because that's all the history the site stores. Check it live with `uv run pytest evals` from `backend/` (about 1¢ a run, not in CI). Each run saves its console output to `backend/evals/runs/last_run_<date>.txt`, and a second run on the same day overwrites that day's file. Commit these logs: a live run can't be repeated, so they're the record of how the model did.
 - **Only for Leaders:** chat works only for companies with a current Blurb. Other companies show a disabled input.
 - **Limits** (in `backend/app/config.py`): each visitor gets 5 messages per UTC day, of up to 250 characters each, and the whole site gets 100 a day. Visitors are anonymous and are identified by a hash of the day and their IP. No IP is stored.
@@ -110,7 +114,7 @@ pg_dump "$(grep '^DATABASE_URL=' .env.production | cut -d= -f2-)" -Fc -f data/ba
 
 **Site:** one Render web service (`render.yaml`) builds `deploy/Dockerfile` and serves the API and the built frontend. It redeploys on every push to `main`, once the tests (`.github/workflows/test.yml`) pass (`autoDeployTrigger: checksPass`), and it applies schema changes to Supabase as it starts. The service is managed by the `market_data_etl_rs_render` Blueprint with Auto Sync on, so edits to `render.yaml` take effect when pushed. Its `DATABASE_URL`, the Supabase session-pooler URL, is entered in the Render dashboard and never committed.
 
-**Daily refresh:** `.github/workflows/daily-refresh.yml` runs the ETL against the same Supabase database at 07:00 UTC and 13:00 UTC, Tuesday to Saturday. It also saves that day's Market direction, which the AI Researcher panel shows next to every Blurb. The site picks up new ratings straight away, with no redeploy. By US morning it shows the previous trading day.
+**Daily refresh:** `.github/workflows/daily-refresh.yml` runs the ETL against the same Supabase database at 07:00 UTC and 13:00 UTC, Tuesday to Saturday. It also saves that day's Market condition, which the AI Researcher panel shows next to every Blurb. The site picks up new ratings straight away, with no redeploy. By US morning it shows the previous trading day.
 - It runs overnight, not at the close, because Massive's free tier only serves a trading day after it has ended, and the ETL fetches up to yesterday by the runner's UTC date. A run at the close would always be a day behind. 07:00 UTC is 2 am EST / 3 am EDT.
 - The 13:00 UTC run retries in case Massive published late. When there's nothing new it finishes in seconds.
 - A market holiday shows as "no data yet" for up to three days and is then recorded as closed. That isn't a failure.

@@ -15,17 +15,19 @@ const FIELDS: [keyof BlurbFields, string][] = [
 ]
 
 const MARKET_CLASS: Record<MarketDirection['status'], string> = {
-  Uptrend: 'market-up',
-  'Under pressure': 'market-pressure',
-  Downtrend: 'market-down',
+  'Strong market': 'market-strong',
+  'Normal market': 'market-normal',
+  'Shaky market': 'market-shaky',
 }
 
 // Matches the rule in backend/app/market.py and the GLOSSARY.md entries
 const MARKET_DEFINITION: Record<MarketDirection['status'], string> = {
-  Uptrend: 'the S&P 500 closed above its 50-day average, and the 50-day is above the 200-day.',
-  'Under pressure':
-    'the S&P 500 is neither in an Uptrend nor a Downtrend, for example below its 50-day average, or below its 200-day average while the 50-day is still rising.',
-  Downtrend: 'the S&P 500 closed below its 200-day average, and the 50-day is not rising.',
+  'Strong market':
+    'Above rising 50- and 200-day averages, with the 50-day above the 200-day. Pullbacks are shallow and bought fast, and it makes new highs after confirming rallies.',
+  'Normal market':
+    'Above the 200-day and mostly above the 50-day, but advancing unevenly. Pullbacks happen, and some breakouts work while others fail.',
+  'Shaky market':
+    'Below the 200-day, or below a falling 50-day average, or repeatedly failing at it. Rallies fade quickly and breakdowns hit new lows.',
 }
 
 function ChatIcon() {

@@ -31,7 +31,7 @@ const blurb: Blurb = {
     risks: 'Export limits on China sales.',
   },
   headlines: [{ date: '2026-11-05', title: 'Nvidia beats and raises', publisher: 'Reuters', url: 'https://example.com/a' }],
-  market: { date: '2026-11-12', status: 'Under pressure', breadth: 0.69 },
+  market: { date: '2026-11-12', status: 'Normal market', breadth: 0.69 },
 }
 
 test('names the selected company while looking up its Blurb', () => {
@@ -55,14 +55,14 @@ test("doesn't look anything up until opened", () => {
   expect(spy).not.toHaveBeenCalled()
 })
 
-test('shows the Blurb with the Market direction and cited sources', async () => {
+test('shows the Blurb with the Market condition and cited sources', async () => {
   vi.spyOn(api, 'blurb').mockResolvedValue(blurb)
   renderWithQueries(<AiResearcher ticker="NVDA" name="Nvidia Corp." />)
   fireEvent.click(screen.getByRole('button', { name: 'AI Researcher' }))
 
   expect(await screen.findByText('Earnings beat and raised guidance on Nov 5.')).toBeTruthy()
   const panel = screen.getByRole('status')
-  expect(panel.textContent).toContain('S&P 500 on 2026-11-12: Under pressure')
+  expect(panel.textContent).toContain('S&P 500 on 2026-11-12: Normal market')
   expect(panel.textContent).toContain('Breadth 69%')
   expect(panel.textContent).toContain('Updated 2026-11-10')
   expect(screen.getByRole('link', { name: 'Nvidia beats and raises' }).getAttribute('href')).toBe('https://example.com/a')
@@ -71,7 +71,7 @@ test('shows the Blurb with the Market direction and cited sources', async () => 
   expect((screen.getByRole('textbox', { name: 'Message' }) as HTMLInputElement).disabled).toBe(false)
 })
 
-test('ends the Blurb with a definition of the Market direction', async () => {
+test('ends the Blurb with a definition of the Market condition', async () => {
   vi.spyOn(api, 'blurb').mockResolvedValue(blurb)
   renderWithQueries(<AiResearcher ticker="NVDA" name="Nvidia Corp." />)
   fireEvent.click(screen.getByRole('button', { name: 'AI Researcher' }))
@@ -79,12 +79,12 @@ test('ends the Blurb with a definition of the Market direction', async () => {
   await screen.findByText('GPUs for AI data centers.')
   const definition = screen.getByRole('status').querySelector('.market-definition')
   expect(definition?.textContent).toBe(
-    'Under pressure: the S&P 500 is neither in an Uptrend nor a Downtrend, for example below its 50-day average, or below its 200-day average while the 50-day is still rising.',
+    'Normal market: Above the 200-day and mostly above the 50-day, but advancing unevenly. Pullbacks happen, and some breakouts work while others fail.',
   )
   expect(screen.getByRole('list', { name: 'Sources' }).compareDocumentPosition(definition!)).toBe(Node.DOCUMENT_POSITION_FOLLOWING)
 })
 
-test('leaves out the definition when there is no Market direction', async () => {
+test('leaves out the definition when there is no Market condition', async () => {
   vi.spyOn(api, 'blurb').mockResolvedValue({ ...blurb, market: null })
   renderWithQueries(<AiResearcher ticker="NVDA" name="Nvidia Corp." />)
   fireEvent.click(screen.getByRole('button', { name: 'AI Researcher' }))

@@ -36,21 +36,21 @@ _Avoid_: Research job, brief run
 A specific, dated event in the news that plausibly explains a Leader's move, such as a product launch, an earnings beat or a major contract. A plain analyst rating change is not a Catalyst.
 _Avoid_: Driver, trigger
 
-**Market direction**:
-The state of the S&P 500 trend: Uptrend, Under pressure or Downtrend.
-_Avoid_: Market trend, regime, market status
+**Market condition**:
+The state of the S&P 500: Strong market, Normal market or Shaky market.
+_Avoid_: Market direction, market trend, regime, market status
 
-**Uptrend**:
-The Market direction when the S&P 500 closed above its 50-day average and the 50-day is above the 200-day.
-_Avoid_: Bull market, confirmed uptrend
+**Strong market**:
+The Market condition when the S&P 500 is above rising 50- and 200-day averages, with the 50-day above the 200-day. Pullbacks are shallow and bought fast, and it makes new highs after confirming rallies.
+_Avoid_: Uptrend, bull market
 
-**Under pressure**:
-The Market direction when the S&P 500 is neither in an Uptrend nor a Downtrend, such as below its 50-day average, or below its 200-day average while the 50-day is still rising.
-_Avoid_: Choppy, correction, sideways
+**Normal market**:
+The Market condition when the S&P 500 is neither a Strong market nor a Shaky market. It is usually above the 200-day and mostly above the 50-day, but advancing unevenly. Pullbacks happen, and some breakouts work while others fail.
+_Avoid_: Under pressure, choppy, sideways
 
-**Downtrend**:
-The Market direction when the S&P 500 closed below its 200-day average and its 50-day average is not rising, compared with 10 trading days ago.
-_Avoid_: Bear market, correction
+**Shaky market**:
+The Market condition when the S&P 500 is below its 200-day average, below a falling 50-day average, or repeatedly failing at the 50-day. Rallies fade quickly and breakdowns hit new lows.
+_Avoid_: Downtrend, bear market, correction
 
 **2-year high close**:
 A ticker's highest daily close in the stored history, which goes back about 2 years, with its date. In chat it answers "all-time high" and "past year high" questions, and the reply says it covers only the last 2 years.

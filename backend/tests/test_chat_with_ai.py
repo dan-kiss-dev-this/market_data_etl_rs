@@ -80,7 +80,7 @@ def test_context_has_the_blurb_rs_data_and_cited_headlines():
     assert "- Catalyst: Earnings beat." in context
     assert "RS rating 97 (1-week change: +3), rank 2 of 68" in context
     assert "- 2026-11-05 · Reuters · Nvidia beats" in context
-    assert "Market direction: Not available." in context
+    assert "Market condition: Not available." in context
 
 
 class FakeStream:

@@ -52,6 +52,10 @@ _Avoid_: Under pressure, choppy, sideways
 The Market condition when the S&P 500 is below its 200-day average, below a falling 50-day average, or repeatedly failing at the 50-day. Rallies fade quickly and breakdowns hit new lows.
 _Avoid_: Downtrend, bear market, correction
 
+**Breadth**:
+The share of S&P 500 companies whose latest close is above their own 50-day average. Companies with fewer than 50 closes are left out. It is shown next to the Market condition for context only and does not decide it.
+_Avoid_: Market breadth, participation, advance-decline
+
 **2-year high close**:
 A ticker's highest daily close in the stored history, which goes back about 2 years, with its date. In chat it answers "all-time high" and "past year high" questions, and the reply says it covers only the last 2 years.
 _Avoid_: All-time high, ATH

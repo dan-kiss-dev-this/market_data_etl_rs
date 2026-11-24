@@ -84,7 +84,9 @@ def test_context_has_the_blurb_rs_data_and_cited_headlines():
 
 
 class FakeStream:
-    def __init__(self, texts: list[str], stop_reason: str = "end_turn", fail: bool = False, content: list | None = None):
+    def __init__(
+        self, texts: list[str], stop_reason: str = "end_turn", fail: bool = False, content: list | None = None
+    ):
         self.texts, self.stop_reason, self.fail, self.content = texts, stop_reason, fail, content or []
 
     def __enter__(self):
@@ -125,14 +127,16 @@ class FakeAnthropic:
 
 def test_reply_streams_text_and_handles_refusals():
     ai = FakeAnthropic(FakeStream(["Nvidia ", "leads."]))
-    assert list(chat_with_ai.reply(ai, "ctx", Conversation(messages=conversation("Rivals?")).messages)) == ["Nvidia ", "leads."]
+    assert list(chat_with_ai.reply(ai, "ctx", Conversation(messages=conversation("Rivals?")).messages)) == [
+        "Nvidia ",
+        "leads.",
+    ]
     assert ai.calls[0]["model"] == "claude-haiku-5-5"
     assert ai.calls[0]["messages"] == [{"role": "user", "content": "Rivals?"}]
     assert ai.calls[0]["system"][1]["text"] == "ctx"
 
     refused = FakeAnthropic(FakeStream([], stop_reason="refusal"))
     assert list(chat_with_ai.reply(refused, "ctx", [])) == [chat_with_ai.REFUSED]
-
 
 
 def test_reply_offers_the_high_close_tool():
@@ -143,7 +147,9 @@ def test_reply_offers_the_high_close_tool():
 
 
 def test_reply_runs_the_tool_and_answers_from_its_result(monkeypatch):
-    monkeypatch.setattr(chat_with_ai, "run_tool", lambda name, tool_input: {"ticker": "NVDA", "date": "2025-07-10", "close": 239.24})
+    monkeypatch.setattr(
+        chat_with_ai, "run_tool", lambda name, tool_input: {"ticker": "NVDA", "date": "2025-07-10", "close": 239.24}
+    )
     ai = FakeAnthropic(tool_use("nvda"), FakeStream(["$239.24 on ", "2025-07-10."]))
     text = list(chat_with_ai.reply(ai, "ctx", Conversation(messages=conversation("All time high?")).messages))
     assert text == ["$239.24 on ", "2025-07-10."]
@@ -184,10 +190,13 @@ def test_high_close_uppercases_the_ticker():
     class Conn:
         def execute(self, sql, params):
             asked.append(params)
-            return type("Cursor", (), {"fetchone": lambda self: {"ticker": "NVDA", "date": "2025-07-10", "close": 239.24}})()
+            return type(
+                "Cursor", (), {"fetchone": lambda self: {"ticker": "NVDA", "date": "2025-07-10", "close": 239.24}}
+            )()
 
     assert chat_with_ai.high_close(Conn(), "nvda") == {"ticker": "NVDA", "date": "2025-07-10", "close": 239.24}
     assert asked == [("NVDA",)]
+
 
 @pytest.fixture
 def api(monkeypatch):

@@ -27,7 +27,9 @@ def test_schema_gaps_name_missing_tables_and_migrations(monkeypatch):
 
 
 def test_every_schema_table_is_found():
-    assert {"daily_bars", "blurbs", "chat_usage", "high_close_past_2_years", "schema_migrations"} <= set(db.SCHEMA_TABLES)
+    assert {"daily_bars", "blurbs", "chat_usage", "high_close_past_2_years", "schema_migrations"} <= set(
+        db.SCHEMA_TABLES
+    )
 
 
 def test_migrations_never_destroy_data():

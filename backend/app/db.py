@@ -179,7 +179,8 @@ def init_schema(conn: psycopg.Connection[Row]) -> None:
         for version in pending(applied_migrations(conn), len(MIGRATIONS)):
             conn.execute(MIGRATIONS[version - 1])
             conn.execute(
-                "INSERT INTO schema_migrations VALUES (%s, %s)", (version, datetime.now(UTC).isoformat(timespec="seconds"))
+                "INSERT INTO schema_migrations VALUES (%s, %s)",
+                (version, datetime.now(UTC).isoformat(timespec="seconds")),
             )
 
 

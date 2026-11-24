@@ -23,8 +23,13 @@ def test_the_tool_must_be_called_once_about_the_right_ticker():
 
 def test_the_reply_needs_the_price_the_date_and_the_2_year_caveat():
     assert check(ALL_TIME, GOOD.replace("$239.24", "$240"), [call("NVDA")], ROW) == "price $239.24 missing"
-    assert check(ALL_TIME, GOOD.replace("July 10, 2025", "last summer"), [call("NVDA")], ROW) == "date 2025-07-10 missing"
-    assert check(ALL_TIME, GOOD.replace(" in the last 2 years", ""), [call("NVDA")], ROW) == "doesn't say it's the high of the last 2 years"
+    assert (
+        check(ALL_TIME, GOOD.replace("July 10, 2025", "last summer"), [call("NVDA")], ROW) == "date 2025-07-10 missing"
+    )
+    assert (
+        check(ALL_TIME, GOOD.replace(" in the last 2 years", ""), [call("NVDA")], ROW)
+        == "doesn't say it's the high of the last 2 years"
+    )
 
 
 def test_an_unrelated_question_must_not_call_the_tool():

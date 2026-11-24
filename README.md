@@ -37,7 +37,7 @@ The ETL pulls daily S&P 500 prices from [Massive](https://massive.com) (formerly
    uv run python -m app.etl --rs-only  # recompute ratings without calling the API
    ```
    The free tier allows 5 calls a minute, and each trading day takes one call. Every day is saved as soon as it arrives, so you can stop the run at any point and rerunning resumes it. Massive's free tier only serves a trading day after that day has ended, so rerun it after midnight ET to add the new day; the run fetches up to yesterday by your machine's date.
-3. Run the tests from `backend/` with `uv run pytest`. They also run in CI on every push and pull request (`.github/workflows/test.yml`); they need no secrets or database.
+3. Run the tests from `backend/` with `uv run pytest`, and lint and format with `uv run ruff check --fix . && uv run ruff format .`. They also run in CI on every push and pull request (`.github/workflows/test.yml`); they need no secrets or database.
 
 ## Blurb run (AI Researcher)
 
@@ -126,7 +126,7 @@ pg_dump "$(grep '^DATABASE_URL=' .env.production | cut -d= -f2-)" -Fc -f data/ba
 
 **Analytics:** visitor stats (pages, referrers, countries) are in Cloudflare → Web Analytics, from a beacon that only production builds load (`frontend/src/analytics.ts`). Render's Metrics tab shows request volume.
 
-**CI:** `.github/workflows/test.yml` runs pytest, Vitest and actionlint on every push and pull request. It needs no secrets.
+**CI:** `.github/workflows/test.yml` runs ruff, pytest, Vitest and actionlint on every push and pull request. It needs no secrets.
 
 ## Adding dependencies
 

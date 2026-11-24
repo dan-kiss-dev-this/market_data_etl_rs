@@ -1,4 +1,3 @@
-
 import pytest
 
 from app import chat_with_ai
@@ -23,7 +22,9 @@ def test_high_close(case: Case, conn, ai, monkeypatch):
         return real(name, tool_input)
 
     monkeypatch.setattr(chat_with_ai, "run_tool", recording)
-    text = "".join(chat_with_ai.reply(ai, context_for(conn, case.ticker), [Message(role="user", content=case.question)]))
+    text = "".join(
+        chat_with_ai.reply(ai, context_for(conn, case.ticker), [Message(role="user", content=case.question)])
+    )
     row = chat_with_ai.high_close(conn, case.asks_about or case.ticker)
     failure = check(case, text, calls, row)
     assert failure is None, f"{failure}\nreply: {text!r}"

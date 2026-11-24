@@ -72,12 +72,11 @@ def copy(
     src: psycopg.Connection[Row], dst: psycopg.Connection[Row], table: str, cols: str, where: str = "", params=()
 ) -> int:
     """Stream the matching rows of a table from src into dst; returns how many were copied."""
-    with src.cursor().copy(f"COPY (SELECT {cols} FROM {table} {where}) TO STDOUT", params) as out:
-        with dst.cursor() as cur:
-            with cur.copy(f"COPY {table} ({cols}) FROM STDIN") as into:
-                for data in out:
-                    into.write(data)
-            return cur.rowcount
+    with src.cursor().copy(f"COPY (SELECT {cols} FROM {table} {where}) TO STDOUT", params) as out, dst.cursor() as cur:
+        with cur.copy(f"COPY {table} ({cols}) FROM STDIN") as into:
+            for data in out:
+                into.write(data)
+        return cur.rowcount
 
 
 def fingerprints(conn: psycopg.Connection[Row], through: str) -> Fingerprints:
@@ -124,7 +123,9 @@ def main() -> None:
                 recopied = copy(remote, local, "daily_bars", bars, "WHERE ticker = ANY(%s)", (changed,))
                 print(f"daily_bars: {len(changed)} tickers re-copied ({recopied} rows): {', '.join(changed[:10])}"
                       + (" …" if len(changed) > 10 else ""))  # fmt: skip
-            new = copy(remote, local, "daily_bars", bars, "WHERE date > %s AND NOT (ticker = ANY(%s))", (local_max, changed))
+            new = copy(
+                remote, local, "daily_bars", bars, "WHERE date > %s AND NOT (ticker = ANY(%s))", (local_max, changed)
+            )
             print(f"daily_bars: +{new} rows after {local_max}")
     compute_rs(local)
     refresh_high_closes(local)

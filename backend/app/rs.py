@@ -57,9 +57,7 @@ def is_new_high(line: Sequence[float | None], i: int, window: int = NEW_HIGH_WIN
     return line[i] >= max(trailing)
 
 
-def compute_ratings(
-    dates: Sequence[str], benchmark: Closes, closes_by_ticker: Mapping[str, Closes]
-) -> list[dict]:
+def compute_ratings(dates: Sequence[str], benchmark: Closes, closes_by_ticker: Mapping[str, Closes]) -> list[dict]:
     """One row per (date, ticker) that has enough history. All series align with dates."""
     lines = {t: rs_line(c, benchmark) for t, c in closes_by_ticker.items()}
     rows = []

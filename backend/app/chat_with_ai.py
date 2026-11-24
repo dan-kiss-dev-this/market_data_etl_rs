@@ -188,17 +188,17 @@ def build_context(blurb: dict, leader: dict | None, description: str) -> str:
         )
     name = f"{leader['name']} ({blurb['ticker']}), sector: {leader['sector']}" if leader else blurb["ticker"]
     return f"""Company: {name}
-Description: {description or 'Not available.'}
+Description: {description or "Not available."}
 
-Blurb as of {blurb['date']}:
+Blurb as of {blurb["date"]}:
 {fields}
 
-RS data as of {blurb['date']}: {rs}
+RS data as of {blurb["date"]}: {rs}
 
-Market condition: {describe_market(blurb['market'])}
+Market condition: {describe_market(blurb["market"])}
 
 Headlines the Catalyst cites:
-{headlines or 'None.'}"""
+{headlines or "None."}"""
 
 
 def leader_context(conn: psycopg.Connection[Row], blurb: dict) -> str:

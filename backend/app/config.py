@@ -28,9 +28,7 @@ DATABASE_URL = database_url(os.environ)
 MASSIVE_BASE_URL = "https://api.massive.com"
 MASSIVE_API_KEY = os.environ.get("MASSIVE_API_KEY", "")
 
-CONSTITUENTS_URL = (
-    "https://raw.githubusercontent.com/datasets/s-and-p-500-companies/main/data/constituents.csv"
-)
+CONSTITUENTS_URL = "https://raw.githubusercontent.com/datasets/s-and-p-500-companies/main/data/constituents.csv"
 BENCHMARK = "SPY"
 
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")

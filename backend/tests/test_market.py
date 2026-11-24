@@ -83,7 +83,12 @@ def test_flat_market_is_a_normal_market():
 
 
 def test_returns_use_21_and_63_trading_days():
-    closes = [100.0] * (market.MIN_BARS - market.QUARTER - 1) + [80.0] * (market.QUARTER - market.MONTH) + [90.0] * market.MONTH + [99.0]
+    closes = (
+        [100.0] * (market.MIN_BARS - market.QUARTER - 1)
+        + [80.0] * (market.QUARTER - market.MONTH)
+        + [90.0] * market.MONTH
+        + [99.0]
+    )
     result = market.direction(closes)
     assert result["ret_1m"] == pytest.approx(99 / 90 - 1)
     assert result["ret_3m"] == pytest.approx(99 / 80 - 1)

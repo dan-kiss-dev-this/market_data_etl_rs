@@ -152,19 +152,19 @@ def build_prompt(leader: dict, rated: str, description: str, news: list[dict], m
         f"[{i}] {a['date']} · {a['publisher']} · {a['title']}\n    Insight ({a['sentiment']}): {a['insight']}"
         for i, a in enumerate(news, 1)
     )
-    return f"""Company: {leader['name']} ({leader['ticker']}), sector: {leader['sector']}
-Description: {description or 'Not available.'}
+    return f"""Company: {leader["name"]} ({leader["ticker"]}), sector: {leader["sector"]}
+Description: {description or "Not available."}
 
 RS data as of {rated}:
-- RS rating {leader['rs_rating']} (1-week change: {'n/a' if change is None else f'{change:+d}'}), \
-rank {leader['sector_rank']} of {leader['sector_size']} in its sector
-- RS line at a new high: {'yes' if leader['rs_new_high'] else 'no'}
-- 3-month return {pct(leader['ret_3m'])}, 12-month return {pct(leader['ret_12m'])}
+- RS rating {leader["rs_rating"]} (1-week change: {"n/a" if change is None else f"{change:+d}"}), \
+rank {leader["sector_rank"]} of {leader["sector_size"]} in its sector
+- RS line at a new high: {"yes" if leader["rs_new_high"] else "no"}
+- 3-month return {pct(leader["ret_3m"])}, 12-month return {pct(leader["ret_12m"])}
 
 Market condition: {describe_market(market)}
 
 Headlines from the 30 days to {rated}:
-{headlines or 'None.'}"""
+{headlines or "None."}"""
 
 
 def write_blurb(ai: anthropic.Anthropic, prompt: str) -> Blurb:
@@ -283,7 +283,9 @@ def main() -> None:
     today = date.today()
     behind = trading_days_behind(rated, today)
     if behind > STALE_TRADING_DAYS:
-        print(f"{RED}Warning: the rated date {rated} is {behind} trading days old. Is the Daily refresh failing?{RESET}")
+        print(
+            f"{RED}Warning: the rated date {rated} is {behind} trading days old. Is the Daily refresh failing?{RESET}"
+        )
 
     leaders = load_leaders(conn, rated)
     if args.ticker:

@@ -47,7 +47,14 @@ def blurb(sources: list[int]) -> blurbs.Blurb:
 
 
 def headline(n: int) -> dict:
-    return {"date": f"2026-11-0{n}", "title": f"H{n}", "publisher": "P", "url": f"u{n}", "sentiment": "positive", "insight": "i"}
+    return {
+        "date": f"2026-11-0{n}",
+        "title": f"H{n}",
+        "publisher": "P",
+        "url": f"u{n}",
+        "sentiment": "positive",
+        "insight": "i",
+    }
 
 
 def test_cited_headlines_keep_order_drop_repeats_and_bad_numbers_and_cap_at_3():
@@ -147,7 +154,9 @@ def no_db(monkeypatch):
     monkeypatch.setattr(blurbs, "market_direction", lambda conn, rated: MARKET)
     monkeypatch.setattr(blurbs, "save_market", lambda conn, market: None)
     monkeypatch.setattr(blurbs, "company_description", lambda conn, client, ticker, today: "desc")
-    monkeypatch.setattr(blurbs, "save_blurb", lambda conn, ticker, rated, b, headlines: saved.append((ticker, headlines)))
+    monkeypatch.setattr(
+        blurbs, "save_blurb", lambda conn, ticker, rated, b, headlines: saved.append((ticker, headlines))
+    )
     monkeypatch.setattr(blurbs, "write_blurb", lambda ai, prompt: blurb([1]))
     return saved
 
@@ -194,7 +203,14 @@ def test_ticker_news_keeps_focused_articles_about_the_ticker_oldest_first():
     news = news_client(articles).ticker_news("NVDA", "2026-10-11", RATED, limit=2)
     # The two single-ticker articles win over the 3-ticker one, then go oldest first
     assert [a["title"] for a in news] == ["T5", "T6"]
-    assert news[0] == {"date": "2026-11-05", "title": "T5", "publisher": "P", "url": "u5", "sentiment": "positive", "insight": "why"}
+    assert news[0] == {
+        "date": "2026-11-05",
+        "title": "T5",
+        "publisher": "P",
+        "url": "u5",
+        "sentiment": "positive",
+        "insight": "why",
+    }
 
 
 def test_latest_blurb_is_kept_however_old():

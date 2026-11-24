@@ -96,9 +96,7 @@ def history_window(conn: psycopg.Connection[Row]) -> tuple[str, str] | None:
     return first, (date.today() - timedelta(days=1)).isoformat()
 
 
-def symbol_periods(
-    client: MassiveClient, ticker: str, first_bar: str | None
-) -> list[tuple[str, str, str | None]]:
+def symbol_periods(client: MassiveClient, ticker: str, first_bar: str | None) -> list[tuple[str, str, str | None]]:
     """(symbol, start, end) periods the company traded under, oldest first; end None = now."""
     events = client.ticker_events(ticker)
     if events and events[-1][1] != ticker and first_bar:
@@ -144,10 +142,7 @@ def refetch_history(conn: psycopg.Connection[Row], client: MassiveClient, ticker
 def fix_renames(conn: psycopg.Connection[Row], client: MassiveClient, tickers: set[str]) -> None:
     """Rebuild history for tickers that look renamed: short history or an impossible jump."""
     spy_days = one(conn.execute("SELECT COUNT(*) FROM daily_bars WHERE ticker = %s", (BENCHMARK,)))[0]
-    counts = {
-        r["ticker"]: r["n"]
-        for r in conn.execute("SELECT ticker, COUNT(*) AS n FROM daily_bars GROUP BY ticker")
-    }
+    counts = {r["ticker"]: r["n"] for r in conn.execute("SELECT ticker, COUNT(*) AS n FROM daily_bars GROUP BY ticker")}
     jumps = {
         r["ticker"]
         for r in conn.execute(
@@ -159,9 +154,7 @@ def fix_renames(conn: psycopg.Connection[Row], client: MassiveClient, tickers: s
     }
     checked = {r["ticker"] for r in conn.execute("SELECT ticker FROM history_checked")}
     # A few missing days is normal (trading halts); a big gap usually means a rename
-    candidates = sorted(
-        t for t in tickers - checked if counts.get(t, 0) < spy_days - 5 or t in jumps
-    )
+    candidates = sorted(t for t in tickers - checked if counts.get(t, 0) < spy_days - 5 or t in jumps)
     for ticker in candidates:
         print(f"  {ticker}: {refetch_history(conn, client, ticker)}")
         with conn.transaction():
@@ -184,7 +177,8 @@ def apply_splits(conn: psycopg.Connection[Row], client: MassiveClient, tickers: 
         return
     applied = {(r["ticker"], r["execution_date"]) for r in conn.execute("SELECT * FROM splits_applied")}
     splits = [
-        s for s in client.splits(since=window[0])
+        s
+        for s in client.splits(since=window[0])
         if s["ticker"] in tickers and (s["ticker"], s["execution_date"]) not in applied
     ]
     refetched = 0
@@ -215,9 +209,7 @@ def compute_rs(conn: psycopg.Connection[Row]) -> None:
     closes_by_ticker: dict[str, list[float | None]] = {
         r["ticker"]: [None] * len(dates) for r in conn.execute("SELECT ticker FROM companies")
     }
-    for r in conn.execute(
-        "SELECT b.ticker, b.date, b.close FROM daily_bars b JOIN companies c USING (ticker)"
-    ):
+    for r in conn.execute("SELECT b.ticker, b.date, b.close FROM daily_bars b JOIN companies c USING (ticker)"):
         i = index.get(r["date"])
         if i is not None:
             closes_by_ticker[r["ticker"]][i] = r["close"]

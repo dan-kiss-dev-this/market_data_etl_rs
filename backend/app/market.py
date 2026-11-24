@@ -5,6 +5,7 @@ Run with --backfill to recompute every stored market_directions row with the cur
 
 import argparse
 from collections.abc import Sequence
+from itertools import pairwise
 
 import psycopg
 from psycopg.types.json import Jsonb
@@ -35,7 +36,7 @@ def failed_crossings(closes: Sequence[float]) -> int:
     """Times in the last CROSSING_WINDOW trading days a close above the 50-day was followed by one below it."""
     n = len(closes)
     above = [closes[end - 1] > moving_average(closes, SHORT, end) for end in range(n - CROSSING_WINDOW, n + 1)]
-    return sum(prev and not now for prev, now in zip(above, above[1:]))
+    return sum(prev and not now for prev, now in pairwise(above))
 
 
 def status(close: float, ma50: float, ma200: float, ma50_rising: bool, ma200_rising: bool, failed: int) -> str:

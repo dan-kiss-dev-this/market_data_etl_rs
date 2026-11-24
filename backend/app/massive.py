@@ -45,9 +45,7 @@ class MassiveClient:
 
     def grouped_daily(self, day: str) -> list[dict]:
         """Every US stock's bar for one trading day."""
-        data = self._get(
-            f"/v2/aggs/grouped/locale/us/market/stocks/{day}", {"adjusted": "true"}
-        )
+        data = self._get(f"/v2/aggs/grouped/locale/us/market/stocks/{day}", {"adjusted": "true"})
         return data.get("results") or []
 
     def ticker_daily(self, ticker: str, start: str, end: str) -> list[dict]:

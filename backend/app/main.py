@@ -26,13 +26,16 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
+
 @app.get("/api/health")
 def health():
     return {"status": "ok"}
 
+
 @app.get("/api/hello")
 def hello(name: str = "world"):
     return {"message": f"Hello, {name}"}
+
 
 @app.get("/api/rs/status")
 def rs_status():
@@ -51,11 +54,13 @@ def rs_status():
         "benchmark": BENCHMARK,
     }
 
+
 @app.get("/api/rs/sectors")
 def rs_sectors():
     with pool().connection() as conn:
         rows = conn.execute("SELECT DISTINCT sector FROM companies ORDER BY sector").fetchall()
     return [r["sector"] for r in rows]
+
 
 @app.get("/api/rs/leaders")
 def rs_leaders(limit: int = LEADER_COUNT, sector: str | None = None):
@@ -83,6 +88,7 @@ def rs_leaders(limit: int = LEADER_COUNT, sector: str | None = None):
         ).fetchall()
     return [{**dict(r), "rs_new_high": bool(r["rs_new_high"])} for r in rows]
 
+
 @app.get("/api/rs/{ticker}/blurb")
 def rs_blurb(ticker: str):
     ticker = ticker.upper()
@@ -96,11 +102,14 @@ def rs_blurb(ticker: str):
         raise HTTPException(404, f"No Blurb for {ticker}")
     return blurb
 
+
 def chat_day() -> date:
     return datetime.now(UTC).date()
 
+
 # The Daily refresh creates chat_usage, so a database it hasn't run against since can't chat yet
 CHAT_UNAVAILABLE = HTTPException(503, "Chat isn't available right now")
+
 
 @app.get("/api/chat/allowance")
 def chat_allowance(request: Request):
@@ -113,6 +122,7 @@ def chat_allowance(request: Request):
     except psycopg.errors.UndefinedTable:
         raise CHAT_UNAVAILABLE
     return {"remaining": allowance.remaining, "limit": CHAT_VISITOR_DAILY, "reason": allowance.reason}
+
 
 @app.post("/api/rs/{ticker}/chat")
 def rs_chat(ticker: str, conversation: Conversation, request: Request):
@@ -147,6 +157,7 @@ def rs_chat(ticker: str, conversation: Conversation, request: Request):
         headers={"X-Chat-Remaining": str(allowance.remaining), "Cache-Control": "no-store"},
     )
 
+
 @app.get("/api/rs/{ticker}")
 def rs_ticker(ticker: str):
     ticker = ticker.upper()
@@ -164,6 +175,7 @@ def rs_ticker(ticker: str):
             (BENCHMARK, ticker),
         ).fetchall()
     return {**dict(company), "series": [dict(r) for r in series]}
+
 
 # The built React app (npm run build), served at / so the site and API share one origin.
 # Mounted last so the /api routes above win. Absent in local dev, where Vite serves it.

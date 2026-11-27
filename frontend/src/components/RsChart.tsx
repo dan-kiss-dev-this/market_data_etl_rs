@@ -182,6 +182,8 @@ export default function RsChart({ detail, range, benchmark, stale }: Props) {
   const base = series[0]?.rs_line ?? 1
   const rows: Row[] = series.map((p) => ({ ...p, rs_index: (100 * p.rs_line) / base }))
   const firstRated = rows.find((r) => r.rs_rating !== null)
+  // The benchmark against itself is a flat RS line with no rating, so it gets the price only
+  const isBenchmark = detail.ticker === benchmark
 
   return (
     <section
@@ -202,31 +204,36 @@ export default function RsChart({ detail, range, benchmark, stale }: Props) {
         dataKey="close"
         format={(v) => `$${v.toFixed(v >= 1000 ? 0 : 2)}`}
         height={PANEL_HEIGHTS.price}
+        showXAxis={isBenchmark}
       />
-      <Panel
-        title="RS line"
-        subtitle={`Price ÷ ${benchmark}, indexed to 100 at the start of the range. Rising = beating the S&P 500`}
-        rows={rows}
-        dataKey="rs_index"
-        format={(v) => v.toFixed(0)}
-        height={PANEL_HEIGHTS.rsLine}
-        reference={{ y: 100, label: `Even with ${benchmark}` }}
-      />
-      <Panel
-        title="RS Rating"
-        subtitle={
-          firstRated
-            ? 'Percentile rank 1–99 within the S&P 500'
-            : 'No ratings in this range yet (each rating needs 12 months of history)'
-        }
-        rows={rows}
-        dataKey="rs_rating"
-        format={(v) => v.toFixed(0)}
-        height={PANEL_HEIGHTS.rsRating}
-        domain={[0, 100]}
-        reference={{ y: 80, label: '80: IBD buy threshold' }}
-        showXAxis
-      />
+      {!isBenchmark && (
+        <>
+        <Panel
+          title="RS line"
+          subtitle={`Price ÷ ${benchmark}, indexed to 100 at the start of the range. Rising = beating the S&P 500`}
+          rows={rows}
+          dataKey="rs_index"
+          format={(v) => v.toFixed(0)}
+          height={PANEL_HEIGHTS.rsLine}
+          reference={{ y: 100, label: `Even with ${benchmark}` }}
+        />
+        <Panel
+          title="RS Rating"
+          subtitle={
+            firstRated
+              ? 'Percentile rank 1–99 within the S&P 500'
+              : 'No ratings in this range yet (each rating needs 12 months of history)'
+          }
+          rows={rows}
+          dataKey="rs_rating"
+          format={(v) => v.toFixed(0)}
+          height={PANEL_HEIGHTS.rsRating}
+          domain={[0, 100]}
+          reference={{ y: 80, label: '80: IBD buy threshold' }}
+          showXAxis
+        />
+        </>
+      )}
     </section>
   )
 }

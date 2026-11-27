@@ -30,6 +30,7 @@ MASSIVE_API_KEY = os.environ.get("MASSIVE_API_KEY", "")
 
 CONSTITUENTS_URL = "https://raw.githubusercontent.com/datasets/s-and-p-500-companies/main/data/constituents.csv"
 BENCHMARK = "SPY"
+BENCHMARK_NAME = "SPDR S&P 500 ETF"
 
 ANTHROPIC_API_KEY = os.environ.get("ANTHROPIC_API_KEY", "")
 BLURB_MODEL = "claude-haiku-5-5"

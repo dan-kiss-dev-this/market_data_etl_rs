@@ -3,7 +3,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { afterEach, beforeEach, expect, test, vi } from 'vitest'
 import { api } from './api'
-import type { Leader, Status, TickerDetail } from './api'
+import type { Benchmark, Leader, Status, TickerDetail } from './api'
 import App from './App'
 
 afterEach(cleanup)
@@ -18,6 +18,7 @@ beforeEach(() => {
       disconnect() {}
     },
   )
+  vi.spyOn(api, 'benchmark').mockResolvedValue(spy)
 })
 afterEach(() => {
   vi.unstubAllGlobals()
@@ -32,6 +33,8 @@ const status: Status = {
   tickers: 500,
   benchmark: 'SPY',
 }
+
+const spy: Benchmark = { ticker: 'SPY', name: 'SPDR S&P 500 ETF', date: '2026-11-10', close: 600, ret_3m: 0.04, ret_12m: 0.15 }
 
 const leader = (ticker: string): Leader => ({
   ticker,
@@ -162,7 +165,7 @@ test('changing sector keeps the old rows on screen, dimmed, until the new ones a
   )
   vi.spyOn(api, 'ticker').mockImplementation((t) => Promise.resolve(detail(t)))
   const { container } = renderApp()
-  const rows = () => [...container.querySelectorAll('.leaders .ticker')].map((el) => el.textContent)
+  const rows = () => [...container.querySelectorAll('.leaders tr:not([data-benchmark]) .ticker')].map((el) => el.textContent)
   await waitFor(() => expect(rows()).toEqual(['AAA']))
 
   fireEvent.change(screen.getByRole('combobox'), { target: { value: 'Tech' } })
@@ -184,4 +187,19 @@ test('a failed request shows the load error', async () => {
 
   expect(await screen.findByText('Could not load data')).toBeTruthy()
   expect(screen.getByText('offline')).toBeTruthy()
+})
+
+test('clicking the SPY row shows the SPY chart, without the AI Researcher', async () => {
+  vi.spyOn(api, 'status').mockResolvedValue(status)
+  vi.spyOn(api, 'sectors').mockResolvedValue([])
+  vi.spyOn(api, 'leaders').mockResolvedValue([leader('AAA')])
+  vi.spyOn(api, 'ticker').mockImplementation((t) => Promise.resolve(detail(t)))
+  renderApp()
+
+  expect(await screen.findByRole('region', { name: 'AAA charts' })).toBeTruthy()
+  expect(screen.getByRole('button', { name: /AI Researcher/ })).toBeTruthy()
+
+  fireEvent.click(screen.getByText('SPY'))
+  expect(await screen.findByRole('region', { name: 'SPY charts' })).toBeTruthy()
+  expect(screen.queryByRole('button', { name: /AI Researcher/ })).toBeNull()
 })

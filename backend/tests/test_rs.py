@@ -85,3 +85,12 @@ def test_compute_ratings_ranks_and_skips_short_history():
     assert rows["UP"]["rs_score"] == pytest.approx(200.0)
     assert rows["UP"]["ret_12m"] == pytest.approx(1.0)
     assert all(r["date"] == f"d{N - 1}" for r in rows.values())
+
+
+def test_period_returns_look_back_63_and_252_trading_days():
+    closes = [50.0] + flat(100.0, N - 65) + [80.0] + flat(100.0, 62) + [120.0]
+    assert rs.period_returns(closes, N - 1) == pytest.approx({"ret_3m": 0.5, "ret_12m": 1.4})
+
+
+def test_period_returns_need_252_prior_bars():
+    assert rs.period_returns(flat(100.0, N - 1), N - 2) is None

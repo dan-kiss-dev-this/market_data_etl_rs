@@ -11,6 +11,8 @@ export const sectorsQuery = queryOptions({ queryKey: ['sectors'], queryFn: () =>
 export const leadersQuery = (sector: string | null) =>
   queryOptions({ queryKey: ['leaders', sector], queryFn: () => api.leaders(sector), staleTime })
 
+export const benchmarkQuery = queryOptions({ queryKey: ['benchmark'], queryFn: () => api.benchmark(), staleTime })
+
 export const tickerQuery = (ticker: string) =>
   queryOptions({ queryKey: ['ticker', ticker], queryFn: () => api.ticker(ticker), staleTime })
 

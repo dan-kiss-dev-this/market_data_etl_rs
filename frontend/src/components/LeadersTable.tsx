@@ -1,7 +1,9 @@
-import type { Leader } from '../api'
+import type { KeyboardEvent, ReactNode } from 'react'
+import type { Benchmark, Leader } from '../api'
 
 type Props = {
   leaders: Leader[]
+  benchmark?: Benchmark
   selected: string | null
   onSelect: (ticker: string) => void
   stale: boolean
@@ -35,6 +37,38 @@ function Change({ value }: { value: number | null }) {
       <span aria-hidden="true">{up ? '▲' : '▼'}</span> {Math.abs(value)}
       <span className="sr-only">{up ? ' up' : ' down'}</span>
     </span>
+  )
+}
+
+// Click, Enter or Space selects a row
+function selectable(ticker: string, selected: string | null, onSelect: (ticker: string) => void) {
+  return {
+    className: ticker === selected ? 'selected' : undefined,
+    'aria-selected': ticker === selected,
+    tabIndex: 0,
+    onClick: () => onSelect(ticker),
+    onKeyDown: (e: KeyboardEvent) => {
+      if (e.key === 'Enter' || e.key === ' ') {
+        e.preventDefault()
+        onSelect(ticker)
+      }
+    },
+  }
+}
+
+function QuoteLink({ ticker, children }: { ticker: string; children: ReactNode }) {
+  return (
+    <a
+      className="quote-link"
+      href={`https://finance.yahoo.com/quote/${encodeURIComponent(ticker)}/`}
+      target="_blank"
+      rel="noopener noreferrer"
+      title={`Open ${ticker} on Yahoo Finance`}
+      onClick={(e) => e.stopPropagation()}
+      onKeyDown={(e) => e.stopPropagation()}
+    >
+      {children}
+    </a>
   )
 }
 
@@ -76,26 +110,35 @@ export function LeadersTableSkeleton({ rows = 10 }: { rows?: number }) {
   )
 }
 
-export default function LeadersTable({ leaders, selected, onSelect, stale }: Props) {
+export default function LeadersTable({ leaders, benchmark, selected, onSelect, stale }: Props) {
   return (
     <div className={`table-wrap${stale ? ' is-loading' : ''}`} aria-busy={stale}>
       <table className="leaders">
         <Head />
         <tbody>
+          {/* Not a Leader, so it is unnumbered and has no rating; it's there to compare returns with */}
+          {benchmark && (
+            <tr {...selectable(benchmark.ticker, selected, onSelect)} data-benchmark="">
+              <td className="num muted"></td>
+              <td>
+                <div className="stock">
+                  <span className="ticker">{benchmark.ticker}</span>
+                </div>
+                <div className="name">{benchmark.name}</div>
+              </td>
+              <td className="num muted">–</td>
+              <td className="num muted">–</td>
+              <td className="num">
+                <QuoteLink ticker={benchmark.ticker}>
+                  <Pct value={benchmark.ret_3m} />
+                </QuoteLink>
+              </td>
+              <td className="num"><Pct value={benchmark.ret_12m} /></td>
+              <td className="num">{benchmark.close.toFixed(2)}</td>
+            </tr>
+          )}
           {leaders.map((l, i) => (
-            <tr
-              key={l.ticker}
-              className={l.ticker === selected ? 'selected' : undefined}
-              aria-selected={l.ticker === selected}
-              tabIndex={0}
-              onClick={() => onSelect(l.ticker)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter' || e.key === ' ') {
-                  e.preventDefault()
-                  onSelect(l.ticker)
-                }
-              }}
-            >
+            <tr key={l.ticker} {...selectable(l.ticker, selected, onSelect)}>
               <td className="num muted">{i + 1}</td>
               <td>
                 <div className="stock">
@@ -118,17 +161,9 @@ export default function LeadersTable({ leaders, selected, onSelect, stale }: Pro
               </td>
               <td className="num"><Change value={l.rating_change_1w} /></td>
               <td className="num">
-                <a
-                  className="quote-link"
-                  href={`https://finance.yahoo.com/quote/${encodeURIComponent(l.ticker)}/`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  title={`Open ${l.ticker} on Yahoo Finance`}
-                  onClick={(e) => e.stopPropagation()}
-                  onKeyDown={(e) => e.stopPropagation()}
-                >
+                <QuoteLink ticker={l.ticker}>
                   <Pct value={l.ret_3m} />
-                </a>
+                </QuoteLink>
               </td>
               <td className="num"><Pct value={l.ret_12m} /></td>
               <td className="num">{l.close.toFixed(2)}</td>

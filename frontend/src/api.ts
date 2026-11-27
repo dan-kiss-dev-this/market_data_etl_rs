@@ -20,6 +20,16 @@ export type Leader = {
   rating_change_1w: number | null
 }
 
+// The benchmark's close and returns on the rated date, shown above the Leaders to compare with
+export type Benchmark = {
+  ticker: string
+  name: string
+  date: string
+  close: number
+  ret_3m: number
+  ret_12m: number
+}
+
 export type Point = {
   date: string
   close: number
@@ -94,6 +104,7 @@ export const api = {
     if (sector) params.set('sector', sector)
     return getJson<Leader[]>(`/api/rs/leaders?${params}`)
   },
+  benchmark: () => getJson<Benchmark>('/api/rs/benchmark'),
   ticker: (ticker: string) => getJson<TickerDetail>(`/api/rs/${encodeURIComponent(ticker)}`),
   // null when the company has no current Blurb (only Leaders get one)
   blurb: async (ticker: string): Promise<Blurb | null> => {

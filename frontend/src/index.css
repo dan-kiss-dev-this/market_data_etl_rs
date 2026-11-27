@@ -219,6 +219,8 @@ select,
   position: relative;
 }
 .leaders {
+  /* The header row's height: padding plus line-height in .leaders th. The SPY row sticks below it */
+  --leaders-head-height: 36px;
   width: 100%;
   border-collapse: collapse;
   font-variant-numeric: tabular-nums;
@@ -232,8 +234,11 @@ select,
   font-weight: 500;
   color: var(--text-muted);
   padding: 10px 10px;
-  border-bottom: 1px solid var(--grid);
+  line-height: 16px;
+  /* A shadow, not a border: collapsed borders scroll away from sticky cells */
+  box-shadow: inset 0 -1px 0 var(--grid);
   white-space: nowrap;
+  z-index: 2;
 }
 .leaders td {
   padding: 8px 10px;
@@ -253,6 +258,24 @@ select,
 .leaders tbody tr.selected {
   background: var(--selected-bg);
   box-shadow: inset 3px 0 0 var(--series-1);
+}
+/* The benchmark row sticks under the header, set off from the Leaders scrolling beneath it.
+   Its cells need an opaque background to hide them, which covers the row's hover and selected
+   tint and bar, so those are repainted on the cells. A collapsed border wouldn't stick, so the
+   divider is a shadow. */
+.leaders tbody tr[data-benchmark] td {
+  position: sticky;
+  top: var(--leaders-head-height);
+  z-index: 1;
+  background: var(--surface);
+  box-shadow: inset 0 -2px 0 var(--border);
+}
+.leaders tbody tr[data-benchmark]:hover td,
+.leaders tbody tr[data-benchmark].selected td {
+  background: linear-gradient(var(--selected-bg), var(--selected-bg)), var(--surface);
+}
+.leaders tbody tr[data-benchmark].selected td:first-child {
+  box-shadow: inset 3px 0 0 var(--series-1), inset 0 -2px 0 var(--border);
 }
 .leaders tbody tr:focus-visible {
   outline: 2px solid var(--series-1);

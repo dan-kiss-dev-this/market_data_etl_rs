@@ -57,6 +57,13 @@ def is_new_high(line: Sequence[float | None], i: int, window: int = NEW_HIGH_WIN
     return line[i] >= max(trailing)
 
 
+def period_returns(closes: Closes, i: int) -> dict | None:
+    """3- and 12-month returns to the close at index i; None without 252 prior bars."""
+    if i < 252:
+        return None
+    return {"ret_3m": closes[i] / closes[i - 63] - 1, "ret_12m": closes[i] / closes[i - 252] - 1}
+
+
 def compute_ratings(dates: Sequence[str], benchmark: Closes, closes_by_ticker: Mapping[str, Closes]) -> list[dict]:
     """One row per (date, ticker) that has enough history. All series align with dates."""
     lines = {t: rs_line(c, benchmark) for t, c in closes_by_ticker.items()}
@@ -78,8 +85,7 @@ def compute_ratings(dates: Sequence[str], benchmark: Closes, closes_by_ticker: M
                     "ticker": ticker,
                     "rs_score": scores[ticker],
                     "rs_rating": rating,
-                    "ret_3m": closes[i] / closes[i - 63] - 1,
-                    "ret_12m": closes[i] / closes[i - 252] - 1,
+                    **period_returns(closes, i),
                     "rs_new_high": is_new_high(lines[ticker], i),
                 }
             )

@@ -118,3 +118,10 @@ test('a stale chart stays drawn, dimmed and marked busy', () => {
   expect(card.getAttribute('aria-busy')).toBe('true')
   expect(container.querySelectorAll('.recharts-wrapper')).toHaveLength(3)
 })
+
+test('the benchmark has only the Price panel, since its RS line is flat and it has no rating', () => {
+  const { container } = render(<RsChart detail={{ ...detail, ticker: 'SPY' }} range="3M" benchmark="SPY" stale={false} />)
+  const titles = [...container.querySelectorAll('.panel-title')].map((t) => t.textContent)
+
+  expect(titles).toEqual(['Price'])
+})

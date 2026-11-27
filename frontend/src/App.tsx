@@ -7,7 +7,7 @@ import { MIN_BARS } from './api'
 import AiResearcher from './components/AiResearcher'
 import LeadersTable, { LeadersTableSkeleton } from './components/LeadersTable'
 import RsChart, { ChartSkeleton } from './components/RsChart'
-import { leadersQuery, sectorsQuery, statusQuery, tickerQuery } from './queries'
+import { benchmarkQuery, leadersQuery, sectorsQuery, statusQuery, tickerQuery } from './queries'
 import { RANGES } from './ranges'
 import type { Range } from './ranges'
 import { STACKED, useMediaQuery } from './useMediaQuery'
@@ -71,6 +71,7 @@ function Dashboard() {
   // Start these now rather than once status has loaded, so the first load runs in parallel
   usePrefetchQuery(sectorsQuery)
   usePrefetchQuery(leadersQuery(shownSector))
+  usePrefetchQuery(benchmarkQuery)
 
   // When the layout stacks, the range picker sits directly above the chart it controls, below the table
   const rangePicker = (
@@ -196,15 +197,16 @@ type BoardProps = {
 
 // The table and the chart for one sector
 function Board({ sector, stale, range, rangePicker }: BoardProps) {
-  const { data: rows } = useSuspenseQuery(leadersQuery(sector))
+  const [{ data: rows }, { data: benchmark }] = useSuspenseQueries({ queries: [leadersQuery(sector), benchmarkQuery] })
   const [pick, setPick] = useState<string | null>(null)
-  // Keep the pick if it survived the filter; otherwise show the leader
-  const selected = pick && rows.some((r) => r.ticker === pick) ? pick : (rows[0]?.ticker ?? null)
+  // Keep the pick if it survived the filter (the benchmark always does); otherwise show the leader
+  const kept = pick === benchmark.ticker || rows.some((r) => r.ticker === pick)
+  const selected = pick && kept ? pick : (rows[0]?.ticker ?? null)
   const shownTicker = useDeferredValue(selected)
 
   return (
     <>
-      <LeadersTable leaders={rows} selected={selected} onSelect={setPick} stale={stale} />
+      <LeadersTable leaders={rows} benchmark={benchmark} selected={selected} onSelect={setPick} stale={stale} />
       {rangePicker}
       {shownTicker ? (
         <Suspense fallback={<ChartSkeleton />}>
@@ -224,8 +226,8 @@ function Chart({ ticker, ...rest }: ChartProps) {
   return (
     <>
       <RsChart detail={detail} benchmark={status.benchmark} {...rest} />
-      {/* Floats over the page (position: fixed), so it takes no space in the layout */}
-      <AiResearcher ticker={detail.ticker} name={detail.name} />
+      {/* Floats over the page (position: fixed), so it takes no space in the layout. Only companies get a Blurb */}
+      {detail.ticker !== status.benchmark && <AiResearcher ticker={detail.ticker} name={detail.name} />}
     </>
   )
 }

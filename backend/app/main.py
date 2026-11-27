@@ -8,10 +8,10 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from fastapi.staticfiles import StaticFiles
 
-from app import chat_with_ai
+from app import chat_with_ai, rs
 from app.blurbs import current_blurb
 from app.chat_with_ai import Conversation, LimitReached
-from app.config import ANTHROPIC_API_KEY, BACKEND_DIR, BENCHMARK, CHAT_VISITOR_DAILY, LEADER_COUNT
+from app.config import ANTHROPIC_API_KEY, BACKEND_DIR, BENCHMARK, BENCHMARK_NAME, CHAT_VISITOR_DAILY, LEADER_COUNT
 from app.db import init_schema, pool
 
 
@@ -89,6 +89,27 @@ def rs_leaders(limit: int = LEADER_COUNT, sector: str | None = None):
     return [{**dict(r), "rs_new_high": bool(r["rs_new_high"])} for r in rows]
 
 
+# Declared before /api/rs/{ticker}, which would otherwise take "benchmark" as a ticker
+@app.get("/api/rs/benchmark")
+def rs_benchmark():
+    """The benchmark's close and returns on the rated date, to compare the Leaders' with."""
+    with pool().connection() as conn:
+        rated = conn.execute("SELECT MAX(date) FROM rs_ratings").fetchone()[0]
+        if rated is None:
+            raise HTTPException(404, "No RS ratings yet")
+        rows = conn.execute(
+            "SELECT close FROM daily_bars WHERE ticker = %s AND date <= %s ORDER BY date", (BENCHMARK, rated)
+        ).fetchall()
+    closes = [r["close"] for r in rows]
+    return {
+        "ticker": BENCHMARK,
+        "name": BENCHMARK_NAME,
+        "date": rated,
+        "close": closes[-1],
+        **rs.period_returns(closes, len(closes) - 1),
+    }
+
+
 @app.get("/api/rs/{ticker}/blurb")
 def rs_blurb(ticker: str):
     ticker = ticker.upper()
@@ -163,6 +184,9 @@ def rs_ticker(ticker: str):
     ticker = ticker.upper()
     with pool().connection() as conn:
         company = conn.execute("SELECT * FROM companies WHERE ticker = %s", (ticker,)).fetchone()
+        # The benchmark isn't an S&P 500 company, but its prices are stored with theirs
+        if ticker == BENCHMARK:
+            company = {"ticker": BENCHMARK, "name": BENCHMARK_NAME, "sector": "Benchmark"}
         if company is None:
             raise HTTPException(404, f"{ticker} is not in the S&P 500 list")
         series = conn.execute(
